@@ -51,6 +51,7 @@ const DEFAULTS_YAML = {
 	tools: {
 		builtin: [
 			{ name: 'ping', description: 'Test connectivity', handler: 'builtin', inputSchema: { type: 'object', properties: {} } },
+			{ name: 'reload_tool_registry', description: 'Reload tools', handler: 'builtin', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
 			{
 				name: 'search_files',
 				description: 'Search for files',
@@ -154,7 +155,29 @@ describe('End-to-end request/response flow', () => {
 
 		const response = JSON.parse(ws.sent[0]);
 		const names = response.result.tools.map((t: any) => t.name).sort();
-		expect(names).toEqual(['echo', 'ping', 'search_files']);
+		expect(names).toEqual(['echo', 'ping', 'reload_tool_registry', 'search_files']);
+	});
+
+	it('reloads the tool registry through the authenticated built-in tool', async () => {
+		const ws = makeFakeSocket();
+		(server as any).handleConnection(ws);
+
+		await deliver(ws, { data: JSON.stringify({ method: 'reload_tool_registry', params: {}, auth: 'secret-key', id: '9' }) });
+
+		const response = JSON.parse(ws.sent[0]);
+		expect(response.id).toBe('9');
+		expect(response.result).toMatchObject({ success: true, total: 4, builtin: 3, user: 1, auto: 0 });
+		expect(response.result.reloadedAt).toEqual(expect.any(String));
+	});
+
+	it('rejects an unauthenticated registry reload', async () => {
+		const ws = makeFakeSocket();
+		(server as any).handleConnection(ws);
+
+		await deliver(ws, { data: JSON.stringify({ method: 'reload_tool_registry', params: {}, auth: 'wrong-key', id: '10' }) });
+
+		const response = JSON.parse(ws.sent[0]);
+		expect(response).toEqual({ error: 'Unauthorized: Invalid API key', id: '10' });
 	});
 
 	it('rejects a request with the wrong API key before it ever reaches the tool registry', async () => {

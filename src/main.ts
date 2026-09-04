@@ -113,9 +113,12 @@ export default class MCPBridgePlugin extends Plugin {
 			id: 'reload-tools',
 			name: 'Reload Tool Registry',
 			callback: async () => {
-				await this.toolRegistry.reload();
-				const stats = this.toolRegistry.getStats();
-				statusBarItem.setText(`MCP Bridge: ${stats.total} tools`);
+				try {
+					const stats = await this.toolRegistry.reload();
+					statusBarItem.setText(`MCP Bridge: ${stats.total} tools`);
+				} catch {
+					// ToolRegistry already records the diagnostic and shows the failure notice.
+				}
 			}
 		});
 
@@ -258,6 +261,15 @@ export default class MCPBridgePlugin extends Plugin {
 
 			case 'extract_dataview_blocks':
 				return await extractDataviewBlocks(this, params.filepath as string);
+
+			case 'reload_tool_registry': {
+				const stats = await this.toolRegistry.reload({ notify: false });
+				return {
+					success: true,
+					reloadedAt: new Date().toISOString(),
+					...stats
+				};
+			}
 
 			default:
 				return this.builtinTools.execute(method, params);

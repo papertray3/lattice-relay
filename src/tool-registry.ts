@@ -13,6 +13,13 @@ import { ToolFileWatcher } from './registry/file-watcher';
 
 export type { ToolDefinition, ToolsConfig, HandlerContext, HandlerResult };
 
+export interface ToolRegistryStats {
+	total: number;
+	builtin: number;
+	user: number;
+	auto: number;
+}
+
 interface ToolsDefaultsFile {
 	version: string;
 	config: ToolsConfig['config'];
@@ -88,7 +95,7 @@ export class ToolRegistry {
 		logger.debug('MCP config generated');
 
 		if (this.config?.config.auto_reload) {
-			this.fileWatcher.start([this.defaultsPath, this.vaultConfigDir], () => this.reload());
+			this.startFileWatcher();
 		}
 
 		this.initialized = true;
@@ -180,23 +187,55 @@ export class ToolRegistry {
 	async updateSearchPaths(searchPaths: string[]): Promise<void> {
 		this.toolSearchPaths = searchPaths;
 		await this.reload();
+		if (this.config?.config.auto_reload) this.startFileWatcher();
 	}
 
 	/**
 	 * Reload configuration and handlers
 	 */
-	async reload(): Promise<void> {
+	async reload(options: { notify?: boolean } = {}): Promise<ToolRegistryStats> {
+		const notify = options.notify ?? true;
+		const previousConfig = this.config;
+		const previousHandlers = this.handlers;
+		const previousCache = this.cachedAllTools;
 		try {
+			// Invalidate before loading or generating. Clearing this after generation
+			// caused the first reload to publish the previous registry snapshot.
+			this.cachedAllTools = [];
+			this.handlers = new Map();
 			await this.loadConfig();
 			this.loadHandlers();
 			this.generateMCPConfig();
-			this.cachedAllTools = []; // Invalidate cache
-			new Notice('MCP Bridge: Tool registry reloaded');
+			const stats = this.getStats();
+			if (notify) new Notice('MCP Bridge: Tool registry reloaded');
 			logger.info('Tool registry reloaded successfully');
+			return stats;
 		} catch (error) {
+			// A failed refresh must not take the currently working registry offline.
+			this.config = previousConfig;
+			this.handlers = previousHandlers;
+			this.cachedAllTools = previousCache;
 			logger.error('Failed to reload:', error);
-			new Notice('MCP Bridge: Failed to reload - see console for details', 5000);
+			if (notify) new Notice('MCP Bridge: Failed to reload - see console for details', 5000);
+			throw error;
 		}
+	}
+
+	private startFileWatcher(): void {
+		const watchPaths = [
+			this.defaultsPath,
+			this.vaultConfigDir,
+			...this.toolSearchPaths.map(searchPath => path.isAbsolute(searchPath)
+				? searchPath
+				: path.join(this.vaultBasePath, searchPath))
+		];
+		this.fileWatcher.start([...new Set(watchPaths)], async () => {
+			try {
+				await this.reload({ notify: false });
+			} catch (error) {
+				logger.error('Automatic tool registry reload failed:', error);
+			}
+		});
 	}
 
 	/**
@@ -302,7 +341,7 @@ export class ToolRegistry {
 	/**
 	 * Get tool statistics
 	 */
-	getStats(): { total: number; builtin: number; user: number; auto: number } {
+	getStats(): ToolRegistryStats {
 		if (!this.config) {
 			return { total: 0, builtin: 0, user: 0, auto: 0 };
 		}

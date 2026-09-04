@@ -48,6 +48,18 @@ function writeYaml(filePath: string, data: unknown): void {
 	fs.writeFileSync(filePath, yaml.dump(data));
 }
 
+function waitFor(predicate: () => boolean, timeoutMs = 2500, intervalMs = 25): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const started = Date.now();
+		const check = () => {
+			if (predicate()) return resolve();
+			if (Date.now() - started > timeoutMs) return reject(new Error('waitFor timed out'));
+			setTimeout(check, intervalMs);
+		};
+		check();
+	});
+}
+
 describe('ToolRegistry', () => {
 	let pluginDir: string;
 	let vaultBasePath: string;
@@ -221,6 +233,71 @@ describe('ToolRegistry', () => {
 			await registry.addTool(tool);
 
 			await expect(registry.addTool({ ...tool, description: 'second' })).rejects.toThrow('already exists');
+		});
+	});
+
+	describe('reload', () => {
+		it('invalidates the tool cache before regenerating the MCP manifest', async () => {
+			const searchDir = path.join(vaultBasePath, 'custom-tools');
+			const registry = new ToolRegistry(makeFakeApp(vaultBasePath), pluginDir, ['custom-tools']);
+			await registry.initialize();
+
+			// Populate the old cache, then add a tool behind the registry's back to
+			// reproduce the stale-first-reload failure seen in the live vault.
+			expect(registry.getAllTools()).toHaveLength(2);
+			writeYaml(path.join(searchDir, 'late_tool.yaml'), {
+				name: 'late_tool',
+				description: 'Appears on reload',
+				handler: 'late_tool.js',
+				inputSchema: { type: 'object', properties: {} },
+			});
+			fs.writeFileSync(path.join(searchDir, 'late_tool.js'), 'module.exports = { async execute() { return { ok: true }; } };');
+
+			const stats = await registry.reload({ notify: false });
+			const generated = JSON.parse(fs.readFileSync(path.join(pluginDir, 'mcp-bridge', 'generated', 'mcp-config.json'), 'utf8'));
+
+			expect(stats).toEqual({ total: 3, builtin: 2, user: 1, auto: 0 });
+			expect(generated.tools.map((tool: ToolDefinition) => tool.name)).toContain('late_tool');
+			expect(registry.getTool('late_tool')).toBeDefined();
+		});
+
+		it('preserves the working registry when a reload fails', async () => {
+			const registry = new ToolRegistry(makeFakeApp(vaultBasePath), pluginDir, []);
+			await registry.initialize();
+			expect(registry.getTool('ping')).toBeDefined();
+
+			fs.rmSync(path.join(pluginDir, 'mcp-bridge', 'defaults', 'tools.defaults.yaml'));
+
+			await expect(registry.reload({ notify: false })).rejects.toThrow('Plugin defaults not found');
+			expect(registry.getTool('ping')).toBeDefined();
+			expect(registry.getStats()).toEqual({ total: 2, builtin: 2, user: 0, auto: 0 });
+		});
+
+		it('automatically reloads changes from a configured external search path', async () => {
+			writeYaml(path.join(pluginDir, 'mcp-bridge', 'defaults', 'tools.defaults.yaml'), {
+				...DEFAULTS_YAML,
+				config: { ...DEFAULTS_YAML.config, auto_reload: true },
+			});
+			const searchDir = path.join(vaultBasePath, 'external-tools');
+			fs.mkdirSync(searchDir, { recursive: true });
+			const registry = new ToolRegistry(makeFakeApp(vaultBasePath), pluginDir, ['external-tools']);
+
+			try {
+				await registry.initialize();
+				await (registry as any).fileWatcher.ready();
+				fs.writeFileSync(path.join(searchDir, 'watched.js'), 'module.exports = { async execute() { return { ok: true }; } };');
+				writeYaml(path.join(searchDir, 'watched.yaml'), {
+					name: 'watched_tool',
+					description: 'Loaded by the external path watcher',
+					handler: 'watched.js',
+					inputSchema: { type: 'object', properties: {} },
+				});
+
+				await waitFor(() => registry.getTool('watched_tool') !== undefined);
+				expect(registry.getTool('watched_tool')).toBeDefined();
+			} finally {
+				registry.destroy();
+			}
 		});
 	});
 

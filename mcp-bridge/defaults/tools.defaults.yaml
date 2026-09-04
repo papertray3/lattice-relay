@@ -24,6 +24,31 @@ tools:
           version:
             type: string
 
+    - name: reload_tool_registry
+      description: Reload all built-in and configured user tool definitions and handlers, regenerate the MCP manifest, and return fresh registry counts
+      handler: builtin
+      category: system
+      tags: [registry, tools, reload]
+      inputSchema:
+        type: object
+        properties: {}
+        additionalProperties: false
+      outputSchema:
+        type: object
+        properties:
+          success:
+            type: boolean
+          reloadedAt:
+            type: string
+          total:
+            type: number
+          builtin:
+            type: number
+          user:
+            type: number
+          auto:
+            type: number
+
     - name: search_files
       description: Search for files in the vault using glob patterns
       handler: builtin
