@@ -209,6 +209,8 @@ The MCP Bridge uses a **YAML-based tool registry** that allows users to add cust
 
 Tools are discovered from configured **tool search path** directories (default: `.obsidian/mcp-bridge/tools/` in your vault) - each tool is its own YAML file, with its handler script living right next to it (a `handler` path resolves relative to that YAML file's own directory).
 
+> **Check your vault's actual configured search paths before writing anywhere** - `.obsidian/mcp-bridge/tools/` is only the out-of-the-box default (`DEFAULT_SETTINGS.toolSearchPaths` in `src/settings.ts`). It's fully reconfigurable per vault via **Settings → MCP Bridge → Tool Discovery**, or by reading `toolSearchPaths` directly from the plugin's `data.json`, and a vault that's been customized may not use the default path at all. A tool written to the default location when the vault's real search path is something else will sit there silently and never load - the registry only scans configured paths, it doesn't fall back to the default. (This vault, for example, uses `_kants/System/mcp` instead.)
+
 **1. Create the tool definition:**
 ```yaml
 # .obsidian/mcp-bridge/tools/count_notes.yaml
