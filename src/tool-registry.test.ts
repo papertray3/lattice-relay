@@ -299,6 +299,27 @@ describe('ToolRegistry', () => {
 				registry.destroy();
 			}
 		});
+
+		it('executes a replaced handler body after reload', async () => {
+			const searchDir = path.join(vaultBasePath, 'custom-tools');
+			fs.mkdirSync(searchDir, { recursive: true });
+			writeYaml(path.join(searchDir, 'mutable.yaml'), {
+				name: 'mutable_tool',
+				description: 'Changes implementation in place',
+				handler: 'mutable.js',
+				inputSchema: { type: 'object', properties: {} },
+			});
+			const handlerPath = path.join(searchDir, 'mutable.js');
+			fs.writeFileSync(handlerPath, 'module.exports = { async execute() { return { version: 1 }; } };');
+			const registry = new ToolRegistry(makeFakeApp(vaultBasePath), pluginDir, ['custom-tools']);
+			await registry.initialize();
+			expect(await registry.executeTool('mutable_tool', {})).toEqual({ version: 1 });
+
+			fs.writeFileSync(handlerPath, 'module.exports = { async execute() { return { version: 2 }; } };');
+			await registry.reload({ notify: false });
+
+			expect(await registry.executeTool('mutable_tool', {})).toEqual({ version: 2 });
+		});
 	});
 
 	describe('executeTool', () => {

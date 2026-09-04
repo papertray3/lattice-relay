@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { createRequire } from 'module';
 import { logger } from '../logger';
 import { ToolDefinition, UserHandlerModule, isUserHandlerModule } from './types';
 
@@ -35,12 +36,13 @@ export function loadUserHandler(tool: ToolDefinition): UserHandlerModule | null 
 			return null;
 		}
 
-		// Clear require cache to allow hot-reload
-		try {
-			delete require.cache[require.resolve(resolved)];
-		} catch (_e) {}
-
-		const handler: unknown = require(resolved);
+		// Use a native require rooted at the handler. The ambient require inside an
+		// Electron bundle can retain a separate cache, making schema reload while
+		// continuing to execute an older handler body.
+		const handlerRequire = createRequire(resolved);
+		const cacheKey = handlerRequire.resolve(resolved);
+		delete handlerRequire.cache[cacheKey];
+		const handler: unknown = handlerRequire(resolved);
 		if (isUserHandlerModule(handler)) {
 			logger.debug(`Loaded handler for "${tool.name}" from ${resolved}`);
 			return handler;
