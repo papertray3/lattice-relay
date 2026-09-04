@@ -10,6 +10,23 @@ import { MetadataExtractor } from './metadata-extractor';
 import { BuiltinTools } from './builtin-tools';
 import { assertValidParams } from './registry/schema-validator';
 import { logger } from './logger';
+import type { ProgrammaticToolDefinition, UserHandlerModule } from './registry/types';
+
+/**
+ * Public surface exposed to other Obsidian plugins as `MCPBridgePlugin.api`
+ * (see onload() below) - the programmatic alternative to dropping a YAML+JS
+ * file pair into a configured tool search path. A calling plugin registers
+ * from its own onload() and is expected to clean up in onunload(), typically
+ * via `this.register(() => bridgeApi.unregisterTool('my_tool'))`.
+ */
+export interface MCPBridgeApi {
+	registerTool(
+		definition: ProgrammaticToolDefinition,
+		handler: UserHandlerModule,
+		options?: { overwrite?: boolean }
+	): void;
+	unregisterTool(name: string): boolean;
+}
 
 export default class MCPBridgePlugin extends Plugin {
 	settings: MCPBridgeSettings;
@@ -18,6 +35,7 @@ export default class MCPBridgePlugin extends Plugin {
 	cacheManager: RenderedContentCacheManager;
 	metadataExtractor: MetadataExtractor;
 	builtinTools: BuiltinTools;
+	api: MCPBridgeApi;
 
 	async onload() {
 		await this.loadSettings();
@@ -55,6 +73,17 @@ export default class MCPBridgePlugin extends Plugin {
 		// Initialize tool registry
 		const pluginDir = path.join(vaultBasePath, '.obsidian', 'plugins', this.manifest.id);
 		this.toolRegistry = new ToolRegistry(this.app, pluginDir, this.settings.toolSearchPaths);
+
+		// Expose the programmatic registration API to other plugins as soon as
+		// toolRegistry exists - registerTool() works even before initialize()
+		// finishes (see ToolRegistry.applyProgrammaticTools()), so another
+		// plugin's onload() can call this.app.plugins.plugins['obsidian-mcp-bridge'].api
+		// without needing to wait on our own initialization order.
+		this.api = {
+			registerTool: (definition, handler, options) =>
+				this.toolRegistry.registerTool(definition, handler, options),
+			unregisterTool: (name) => this.toolRegistry.unregisterTool(name)
+		};
 
 		try {
 			await this.toolRegistry.initialize();
@@ -175,7 +204,9 @@ export default class MCPBridgePlugin extends Plugin {
 				if (tool.handler === 'builtin') {
 					return this.handleBuiltinTool(method, params);
 				} else {
-					// Execute user script
+					// Execute user script or programmatically-registered handler -
+					// both run through the registry the same way (see
+					// ToolRegistry.executeTool()); only 'builtin' is special-cased.
 					return await this.toolRegistry.executeTool(method, params);
 				}
 			}

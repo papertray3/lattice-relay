@@ -21,7 +21,7 @@ import { createTestFile } from './test/helpers';
  * The plugin instance is built without calling the real onload() (which
  * would bind an actual TCP port and touch real settings persistence) -
  * instead its handleRequest()-relevant fields (toolRegistry, builtinTools,
- * server) are wired up directly, mirroring what onload() does.
+ * server, api) are wired up directly, mirroring what onload() does.
  */
 
 function writeYaml(filePath: string, data: unknown): void {
@@ -115,6 +115,13 @@ describe('End-to-end request/response flow', () => {
 		plugin.toolRegistry = toolRegistry;
 		plugin.builtinTools = new BuiltinTools(fakeApp, fakeMetadataExtractor);
 		(plugin as any).settings = { requireAuth: true, apiKey: 'secret-key' };
+		// Mirrors the wiring onload() does - see main.ts. Built here (rather than
+		// calling the real onload()) for the same reason toolRegistry/builtinTools
+		// are wired directly above: onload() also binds a real TCP port.
+		plugin.api = {
+			registerTool: (definition, handler, options) => plugin.toolRegistry.registerTool(definition, handler, options),
+			unregisterTool: (name) => plugin.toolRegistry.unregisterTool(name),
+		};
 
 		server = new MCPWebSocketServer(plugin);
 		plugin.server = server;
@@ -249,5 +256,83 @@ describe('End-to-end request/response flow', () => {
 		const response = JSON.parse(ws1.sent[1]);
 		expect(response.result.status).toBe('broadcast_sent');
 		expect(response.result.clients).toBe(2);
+	});
+
+	describe('plugin.api (programmatic tool registration)', () => {
+		// This is the surface another Obsidian plugin (e.g. lattice-foundry) calls
+		// from its own onload()/onunload() - see MCPBridgeApi in main.ts. No YAML
+		// file, no JS file on disk; the handler is an in-memory function that's
+		// dispatched through the exact same WebSocket -> handleRequest ->
+		// ToolRegistry.executeTool() path as a file-based user tool.
+		it('routes a tool registered via plugin.api through the WebSocket layer end to end', async () => {
+			plugin.api.registerTool(
+				{
+					name: 'other_plugin_tool',
+					description: 'Registered by a sibling plugin, not the tool search path',
+					inputSchema: { type: 'object', properties: { value: { type: 'number' } } },
+				},
+				{
+					execute: async (params: any) => ({ doubled: (params.value as number) * 2 }),
+				}
+			);
+
+			const ws = makeFakeSocket();
+			(server as any).handleConnection(ws);
+			await deliver(ws, { data: JSON.stringify({ method: 'other_plugin_tool', params: { value: 21 }, auth: 'secret-key', id: '11' }) });
+
+			const response = JSON.parse(ws.sent[0]);
+			expect(response).toEqual({ result: { doubled: 42 }, id: '11' });
+		});
+
+		it('includes a programmatically-registered tool in tools/list, and drops it after unregisterTool()', async () => {
+			plugin.api.registerTool(
+				{ name: 'listed_tool', description: 'Should appear in tools/list', inputSchema: { type: 'object', properties: {} } },
+				{ execute: async () => ({}) }
+			);
+
+			const ws = makeFakeSocket();
+			(server as any).handleConnection(ws);
+			await deliver(ws, { data: JSON.stringify({ method: 'tools/list', params: {}, auth: 'secret-key', id: '12' }) });
+			let names = JSON.parse(ws.sent[0]).result.tools.map((t: any) => t.name).sort();
+			expect(names).toContain('listed_tool');
+
+			expect(plugin.api.unregisterTool('listed_tool')).toBe(true);
+
+			await deliver(ws, { data: JSON.stringify({ method: 'tools/list', params: {}, auth: 'secret-key', id: '13' }) });
+			names = JSON.parse(ws.sent[1]).result.tools.map((t: any) => t.name).sort();
+			expect(names).not.toContain('listed_tool');
+		});
+
+		it('calling an unregistered programmatic tool surfaces a clean "Unknown method" error', async () => {
+			plugin.api.registerTool(
+				{ name: 'transient_tool', description: 'Registered then unregistered', inputSchema: { type: 'object', properties: {} } },
+				{ execute: async () => ({}) }
+			);
+			plugin.api.unregisterTool('transient_tool');
+
+			const ws = makeFakeSocket();
+			(server as any).handleConnection(ws);
+			await deliver(ws, { data: JSON.stringify({ method: 'transient_tool', params: {}, auth: 'secret-key', id: '14' }) });
+
+			const response = JSON.parse(ws.sent[0]);
+			expect(response.id).toBe('14');
+			expect(response.error).toContain('Unknown method');
+		});
+
+		it('a programmatically-registered tool survives reload_tool_registry', async () => {
+			plugin.api.registerTool(
+				{ name: 'resilient_tool', description: 'Must survive a registry reload', inputSchema: { type: 'object', properties: {} } },
+				{ execute: async () => ({ still: 'here' }) }
+			);
+
+			const ws = makeFakeSocket();
+			(server as any).handleConnection(ws);
+			await deliver(ws, { data: JSON.stringify({ method: 'reload_tool_registry', params: {}, auth: 'secret-key', id: '15' }) });
+			expect(JSON.parse(ws.sent[0]).result).toMatchObject({ success: true, auto: 1 });
+
+			await deliver(ws, { data: JSON.stringify({ method: 'resilient_tool', params: {}, auth: 'secret-key', id: '16' }) });
+			const response = JSON.parse(ws.sent[1]);
+			expect(response).toEqual({ result: { still: 'here' }, id: '16' });
+		});
 	});
 });

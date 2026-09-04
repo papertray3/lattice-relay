@@ -236,6 +236,146 @@ describe('ToolRegistry', () => {
 		});
 	});
 
+	describe('registerTool / unregisterTool', () => {
+		// Programmatic registration - the in-memory counterpart to addTool()/file
+		// discovery, used by other Obsidian plugins from their own onload() (see
+		// MCPBridgePlugin.api in main.ts). No YAML file, no JS file on disk.
+		function makeHandler(result: Record<string, unknown>) {
+			return { execute: async () => result };
+		}
+
+		it('registers a tool in-memory and executes it without any file on disk', async () => {
+			const registry = new ToolRegistry(makeFakeApp(vaultBasePath), pluginDir, []);
+			await registry.initialize();
+
+			registry.registerTool(
+				{
+					name: 'greet_programmatic',
+					description: 'Registered without a YAML/JS file pair',
+					inputSchema: { type: 'object', properties: { name: { type: 'string' } } },
+				},
+				{
+					execute: async (params: any) => ({ message: `hello ${params.name}` }),
+				}
+			);
+
+			expect(registry.getTool('greet_programmatic')?.handler).toBe('programmatic');
+			expect(await registry.executeTool('greet_programmatic', { name: 'world' })).toEqual({ message: 'hello world' });
+		});
+
+		it('unregisterTool removes the tool and further execution fails cleanly', async () => {
+			const registry = new ToolRegistry(makeFakeApp(vaultBasePath), pluginDir, []);
+			await registry.initialize();
+
+			registry.registerTool(
+				{ name: 'temp_tool', description: 'Will be removed', inputSchema: { type: 'object', properties: {} } },
+				makeHandler({ ok: true })
+			);
+			expect(registry.getTool('temp_tool')).toBeDefined();
+
+			expect(registry.unregisterTool('temp_tool')).toBe(true);
+
+			expect(registry.getTool('temp_tool')).toBeUndefined();
+			await expect(registry.executeTool('temp_tool', {})).rejects.toThrow('Tool not found: temp_tool');
+			// Mirrors this.register(() => api.unregisterTool(name)) firing twice - must stay a no-op.
+			expect(registry.unregisterTool('temp_tool')).toBe(false);
+		});
+
+		it('survives reload() - the exact regression this API is designed to avoid', async () => {
+			const searchDir = path.join(vaultBasePath, 'custom-tools');
+			const registry = new ToolRegistry(makeFakeApp(vaultBasePath), pluginDir, ['custom-tools']);
+			await registry.initialize();
+
+			registry.registerTool(
+				{ name: 'survives_reload', description: 'Registered by another plugin', inputSchema: { type: 'object', properties: {} } },
+				makeHandler({ survived: true })
+			);
+
+			// reload() fully rebuilds `config` from loadConfig() (disk defaults +
+			// discovered tools only) and replaces `handlers` with a fresh Map - the
+			// programmatic registration must not be a casualty of that rebuild.
+			writeYaml(path.join(searchDir, 'unrelated.yaml'), {
+				name: 'unrelated_tool',
+				description: 'Some other file-based tool appearing at the same time',
+				handler: 'unrelated.js',
+				inputSchema: { type: 'object', properties: {} },
+			});
+			fs.writeFileSync(path.join(searchDir, 'unrelated.js'), 'module.exports = { async execute() { return {}; } };');
+
+			await registry.reload({ notify: false });
+
+			expect(registry.getTool('survives_reload')).toBeDefined();
+			expect(await registry.executeTool('survives_reload', {})).toEqual({ survived: true });
+		});
+
+		it('counts programmatic tools in getAllTools()/getStats() alongside builtin and file-based tools', async () => {
+			const searchDir = path.join(vaultBasePath, 'custom-tools');
+			writeYaml(path.join(searchDir, 'file_tool.yaml'), {
+				name: 'file_tool',
+				description: 'A file-based tool',
+				handler: 'file_tool.js',
+				inputSchema: { type: 'object', properties: {} },
+			});
+			fs.writeFileSync(path.join(searchDir, 'file_tool.js'), 'module.exports = { async execute() { return {}; } };');
+
+			const registry = new ToolRegistry(makeFakeApp(vaultBasePath), pluginDir, ['custom-tools']);
+			await registry.initialize();
+
+			registry.registerTool(
+				{ name: 'programmatic_tool', description: 'A programmatic tool', inputSchema: { type: 'object', properties: {} } },
+				makeHandler({})
+			);
+
+			expect(registry.getStats()).toEqual({ total: 4, builtin: 2, user: 1, auto: 1 });
+			expect(registry.getAllTools().map(t => t.name).sort()).toEqual(['file_tool', 'ping', 'programmatic_tool', 'search_files']);
+		});
+
+		it('rejects registering a name that collides with an existing tool by default', async () => {
+			const registry = new ToolRegistry(makeFakeApp(vaultBasePath), pluginDir, []);
+			await registry.initialize();
+
+			expect(() =>
+				registry.registerTool(
+					{ name: 'ping', description: 'Rogue duplicate of the builtin ping', inputSchema: { type: 'object', properties: {} } },
+					makeHandler({})
+				)
+			).toThrow('Tool "ping" already exists');
+		});
+
+		it('allows an explicit overwrite of a colliding name (including a prior programmatic registration)', async () => {
+			const registry = new ToolRegistry(makeFakeApp(vaultBasePath), pluginDir, []);
+			await registry.initialize();
+
+			registry.registerTool(
+				{ name: 'custom_once', description: 'First registration', inputSchema: { type: 'object', properties: {} } },
+				makeHandler({ version: 1 })
+			);
+			expect(await registry.executeTool('custom_once', {})).toEqual({ version: 1 });
+
+			registry.registerTool(
+				{ name: 'custom_once', description: 'Second registration', inputSchema: { type: 'object', properties: {} } },
+				makeHandler({ version: 2 }),
+				{ overwrite: true }
+			);
+
+			expect(registry.getStats().auto).toBe(1); // replaced, not duplicated
+			expect(await registry.executeTool('custom_once', {})).toEqual({ version: 2 });
+		});
+
+		it('rejects a registration missing required fields or a handler without execute()', async () => {
+			const registry = new ToolRegistry(makeFakeApp(vaultBasePath), pluginDir, []);
+			await registry.initialize();
+
+			expect(() => registry.registerTool({ name: '' } as any, makeHandler({}))).toThrow('missing required field: name');
+			expect(() =>
+				registry.registerTool(
+					{ name: 'no_handler_fn', description: 'x', inputSchema: { type: 'object', properties: {} } },
+					{} as any
+				)
+			).toThrow('must implement execute');
+		});
+	});
+
 	describe('reload', () => {
 		it('invalidates the tool cache before regenerating the MCP manifest', async () => {
 			const searchDir = path.join(vaultBasePath, 'custom-tools');

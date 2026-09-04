@@ -3,7 +3,7 @@ import * as yaml from 'js-yaml';
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from './logger';
-import { ToolDefinition, ToolsConfig, HandlerContext, HandlerResult, UserHandlerModule, getAllToolDefinitions } from './registry/types';
+import { ToolDefinition, ToolsConfig, HandlerContext, HandlerResult, UserHandlerModule, ProgrammaticToolDefinition, getAllToolDefinitions } from './registry/types';
 import { loadYamlFile } from './registry/yaml-loader';
 import { discoverUserTools } from './registry/discovery';
 import { validateToolsConfig } from './registry/validation';
@@ -11,7 +11,7 @@ import { loadUserHandler } from './registry/handler-loader';
 import { writeMcpConfig } from './registry/mcp-config-writer';
 import { ToolFileWatcher } from './registry/file-watcher';
 
-export type { ToolDefinition, ToolsConfig, HandlerContext, HandlerResult };
+export type { ToolDefinition, ToolsConfig, HandlerContext, HandlerResult, UserHandlerModule, ProgrammaticToolDefinition };
 
 export interface ToolRegistryStats {
 	total: number;
@@ -54,6 +54,12 @@ export class ToolRegistry {
 	private toolSearchPaths: string[];
 	private vaultBasePath: string;
 
+	// Tools registered in-memory via registerTool() (e.g. by another Obsidian
+	// plugin from its own onload()) - see registerTool()/applyProgrammaticTools()
+	// for why these live in their own maps instead of directly in `config`/`handlers`.
+	private programmaticTools: Map<string, ToolDefinition> = new Map();
+	private programmaticHandlers: Map<string, UserHandlerModule> = new Map();
+
 	constructor(app: App, pluginDir: string, toolSearchPaths: string[] = []) {
 		this.app = app;
 		this.pluginDir = pluginDir;
@@ -91,8 +97,11 @@ export class ToolRegistry {
 		this.loadHandlers();
 		logger.debug('Handlers loaded');
 
-		this.generateMCPConfig();
-		logger.debug('MCP config generated');
+		// Re-projects any tools registered via registerTool() before initialize()
+		// finished (plugin load order isn't guaranteed) and (re)generates the MCP
+		// config - see applyProgrammaticTools().
+		this.applyProgrammaticTools();
+		logger.debug('Programmatic tools applied, MCP config generated');
 
 		if (this.config?.config.auto_reload) {
 			this.startFileWatcher();
@@ -145,7 +154,8 @@ export class ToolRegistry {
 				tools: {
 					builtin: defaults.tools.builtin || [],
 					user: userTools,
-					auto: []   // Reserved for future use
+					auto: []   // Repopulated from `programmaticTools` by applyProgrammaticTools(),
+					           // called right after this in both initialize() and reload().
 				}
 			};
 
@@ -163,7 +173,8 @@ export class ToolRegistry {
 
 	/**
 	 * Load all handler scripts (builtin tools just get tagged; user tool
-	 * handlers are require()'d - see registry/handler-loader.ts).
+	 * handlers are require()'d - see registry/handler-loader.ts; programmatic
+	 * tools are skipped here and wired up by applyProgrammaticTools() instead).
 	 */
 	private loadHandlers(): void {
 		if (!this.config) return;
@@ -171,6 +182,13 @@ export class ToolRegistry {
 		for (const tool of getAllToolDefinitions(this.config)) {
 			if (tool.handler === 'builtin') {
 				this.handlers.set(tool.name, 'builtin');
+				continue;
+			}
+			if (tool.handler === 'programmatic') {
+				// The live function reference lives in `programmaticHandlers`, not on
+				// disk - there's nothing to require() here. applyProgrammaticTools()
+				// (called right after loadHandlers() in both initialize() and reload())
+				// sets the real handler on `this.handlers`.
 				continue;
 			}
 
@@ -205,7 +223,10 @@ export class ToolRegistry {
 			this.handlers = new Map();
 			await this.loadConfig();
 			this.loadHandlers();
-			this.generateMCPConfig();
+			// loadConfig()/loadHandlers() only know about disk defaults and
+			// file-discovered tools - without this, registerTool() registrations
+			// would be silently wiped out by every reload. See applyProgrammaticTools().
+			this.applyProgrammaticTools();
 			const stats = this.getStats();
 			if (notify) new Notice('MCP Bridge: Tool registry reloaded');
 			logger.info('Tool registry reloaded successfully');
@@ -409,6 +430,100 @@ export class ToolRegistry {
 			logger.error(`Failed to add tool "${toolDefinition.name}":`, error);
 			throw error;
 		}
+	}
+
+	/**
+	 * Register a tool programmatically, entirely in-memory - no YAML file, no
+	 * handler script on disk. This is what MCPBridgePlugin.api.registerTool()
+	 * (see main.ts) exposes to other Obsidian plugins, so they can add MCP
+	 * tools from their own onload() instead of dropping files into a configured
+	 * tool search path.
+	 *
+	 * The registration lives in `programmaticTools`/`programmaticHandlers`,
+	 * which reload() never clears (see applyProgrammaticTools()) - it survives
+	 * both manual and file-watcher-triggered reloads.
+	 *
+	 * A name collision with any existing tool (builtin, file-based, or another
+	 * programmatic registration) is an error unless `{ overwrite: true }` is
+	 * passed - matching addTool()'s existing precedent, and safer as a default
+	 * for callers who don't control what other plugins/files might already be
+	 * using a given tool name.
+	 */
+	registerTool(
+		definition: ProgrammaticToolDefinition,
+		handler: UserHandlerModule,
+		options: { overwrite?: boolean } = {}
+	): void {
+		if (!definition.name) {
+			throw new Error('Tool definition missing required field: name');
+		}
+		if (!definition.description) {
+			throw new Error('Tool definition missing required field: description');
+		}
+		if (!definition.inputSchema) {
+			throw new Error('Tool definition missing required field: inputSchema');
+		}
+		if (!handler || typeof handler.execute !== 'function') {
+			throw new Error(`Handler for tool "${definition.name}" must implement execute(params, context)`);
+		}
+
+		const existing = this.getTool(definition.name);
+		if (existing && !options.overwrite) {
+			const source = this.programmaticTools.has(definition.name)
+				? 'an earlier registerTool() call'
+				: (existing._sourcePath ?? existing.handler);
+			throw new Error(`Tool "${definition.name}" already exists (source: ${source}). Pass { overwrite: true } to replace it.`);
+		}
+
+		const toolDef: ToolDefinition = { ...definition, handler: 'programmatic', _sourcePath: 'programmatic' };
+		this.programmaticTools.set(definition.name, toolDef);
+		this.programmaticHandlers.set(definition.name, handler);
+		this.applyProgrammaticTools();
+
+		logger.info(`Tool "${definition.name}" registered programmatically`);
+	}
+
+	/**
+	 * Unregister a programmatically-registered tool. Intended for
+	 * `this.register(() => bridgeApi.unregisterTool(name))` in a calling
+	 * plugin's onload() (Obsidian's standard cleanup idiom) - safe to call even
+	 * if the tool was never registered (returns false rather than throwing),
+	 * and only ever removes registerTool() registrations, never builtin or
+	 * file-based tools.
+	 */
+	unregisterTool(name: string): boolean {
+		const existed = this.programmaticTools.delete(name);
+		this.programmaticHandlers.delete(name);
+		if (!existed) return false;
+
+		// applyProgrammaticTools() only adds/refreshes entries still present in
+		// programmaticHandlers - it doesn't know to remove one that's gone, so
+		// drop the live handler entry directly.
+		this.handlers.delete(name);
+		this.applyProgrammaticTools();
+
+		logger.info(`Tool "${name}" unregistered`);
+		return true;
+	}
+
+	/**
+	 * Re-project the persistent programmatic-tool maps into the live
+	 * `config.tools.auto` / `handlers` / `cachedAllTools` state. Called both
+	 * directly from registerTool()/unregisterTool(), and after every
+	 * loadConfig()+loadHandlers() cycle (initialize(), reload()) - loadConfig()
+	 * always rebuilds `config` from disk defaults plus file-discovered tools
+	 * only (hardcoding `tools.auto: []`), and reload() replaces `handlers` with
+	 * a fresh Map, so without this, programmatic registrations would be
+	 * silently wiped out by the very next reload.
+	 */
+	private applyProgrammaticTools(): void {
+		if (!this.config) return;
+		this.config.tools.auto = Array.from(this.programmaticTools.values());
+		for (const [name, handler] of this.programmaticHandlers) {
+			this.handlers.set(name, handler);
+		}
+		this.cachedAllTools = [];
+		this.generateMCPConfig();
 	}
 
 	/**

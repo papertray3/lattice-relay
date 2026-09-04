@@ -41,6 +41,15 @@ export interface ToolsConfig {
 }
 
 /**
+ * Shape accepted by ToolRegistry.registerTool() (see tool-registry.ts) - the
+ * programmatic-registration counterpart to a user tool's YAML definition.
+ * Callers supply the handler function separately, so they don't set `handler`
+ * (a disk-path/`'builtin'` marker) or the file-discovery metadata fields
+ * themselves; the registry fills `handler: 'programmatic'` in on registration.
+ */
+export type ProgrammaticToolDefinition = Omit<ToolDefinition, 'handler' | '_sourcePath' | '_sourceDir'>;
+
+/**
  * Handler context provided to user scripts
  */
 export interface HandlerContext {
@@ -60,7 +69,9 @@ export interface HandlerResult {
 }
 
 /**
- * The shape every handler script's module.exports must satisfy.
+ * The shape every handler script's module.exports must satisfy. Also the shape
+ * expected of the in-memory `handler` passed to ToolRegistry.registerTool() -
+ * a programmatically-registered tool is executed exactly like a file-based one.
  */
 export interface UserHandlerModule {
 	execute(params: Record<string, unknown>, context: HandlerContext): Promise<HandlerResult>;
