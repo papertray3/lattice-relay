@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `search_vault()` performs filename/path searches with parent folder + tag context
 - Updated MCP server + docs to describe the new discovery/search workflow
 
+### Security
+- Bumped runtime dependencies within their current major versions to clear every `npm audit --omit=dev` finding: `ws` 8.22.2, `js-yaml` 4.3.2, `fast-uri` 3.1.9 (via `ajv`) and `picomatch` 2.3.2 (via `chokidar`). The remaining audit findings are in development and test tooling only.
+
 ### Planned - Phase 3
 - SmartConnections integration
 - Digital Garden integration
