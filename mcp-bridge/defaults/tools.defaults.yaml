@@ -264,3 +264,101 @@ tools:
             type: array
             items:
               type: string
+
+    # Lattice Relay: read-only projection of Lattice's public Focus and Fold contracts.
+    # Neither tool changes Focus, writes to the vault, or grants authority.
+    - name: lattice_orient
+      description: "Where am I working? Returns Lattice Focus (current, previous and candidate Folds with evidence and diagnostics), a bounded description of the current Fold (briefing, readiness, revisions, members by role, folders, remembered non-secret values), declared Fold topology or an explicit unavailable result, and the selectable Folds. Read-only: it never changes Focus, and grantsAuthority is always false. Pass expectedContextRevision to refuse (outcome 'stale') if Focus moved since you last looked."
+      handler: builtin
+      category: lattice
+      tags: [lattice, focus, fold, context, read-only]
+      inputSchema:
+        type: object
+        properties:
+          expectedContextRevision:
+            type: integer
+            minimum: 0
+            description: Focus revision you expect. If Focus has moved, nothing is inspected and the outcome is 'stale'.
+          includeMembers:
+            type: boolean
+            description: Include the current Fold's members and folders (default true).
+          includeTopology:
+            type: boolean
+            description: Request declared Fold topology (default true). Unavailable topology is reported, never inferred.
+        additionalProperties: false
+      outputSchema:
+        type: object
+        description: lattice-relay-orientation/v1
+        properties:
+          spec:
+            type: string
+          outcome:
+            type: string
+            enum: [inspected, no-current-fold, stale, invalid-request, fold-unavailable, fold-not-found, lattice-unavailable, lattice-incompatible, upstream-invalid, upstream-failed]
+          errorClass:
+            type: string
+            enum: [none, domain, availability, compatibility, contract]
+          grantsAuthority:
+            type: boolean
+            const: false
+          source:
+            type: object
+          availability:
+            type: object
+          context:
+            type: object
+            nullable: true
+          currentFold:
+            type: object
+            nullable: true
+          folds:
+            type: object
+            nullable: true
+          diagnostics:
+            type: array
+
+    - name: lattice_fold_describe
+      description: "What is this Fold? Describes one Fold named by foldId through Lattice's public inspection API: identity, readiness, revisions, briefing, members by role, folders, remembered non-secret values, and declared topology or an explicit unavailable result. Does not read or change Focus and grants no authority. Get Fold ids from lattice_orient."
+      handler: builtin
+      category: lattice
+      tags: [lattice, fold, context, read-only]
+      inputSchema:
+        type: object
+        properties:
+          foldId:
+            type: string
+            minLength: 1
+            maxLength: 200
+            description: The Fold to describe, e.g. from lattice_orient's folds list.
+          includeMembers:
+            type: boolean
+            description: Include members and folders (default true).
+          includeTopology:
+            type: boolean
+            description: Request declared Fold topology (default true). Unavailable topology is reported, never inferred.
+        required: [foldId]
+        additionalProperties: false
+      outputSchema:
+        type: object
+        description: lattice-relay-fold-description/v1
+        properties:
+          spec:
+            type: string
+          outcome:
+            type: string
+            enum: [described, fold-not-found, lattice-unavailable, lattice-incompatible, upstream-invalid, upstream-failed]
+          errorClass:
+            type: string
+            enum: [none, domain, availability, compatibility, contract]
+          grantsAuthority:
+            type: boolean
+            const: false
+          source:
+            type: object
+          availability:
+            type: object
+          fold:
+            type: object
+            nullable: true
+          diagnostics:
+            type: array

@@ -1,0 +1,132 @@
+{
+	"spec": "lattice-fold-context-envelope/v1",
+	"foldId": "fold-example-0001",
+	"found": true,
+	"manifestRevision": 1,
+	"effectiveStateRevision": 1,
+	"authorityRevision": 1,
+	"workstreamRevision": "ws-p07",
+	"generatedAt": "2026-10-17T12:00:00.000Z",
+	"requestedFacets": [
+		"lattice.fold.preamble@1.0.0"
+	],
+	"observationWatermark": null,
+	"diagnostics": [],
+	"facets": [
+		{
+			"facetId": "lattice.fold.preamble@1.0.0",
+			"provider": {
+				"providerId": "lattice-fold.builtin-inspection",
+				"version": "1.0.0"
+			},
+			"generatedAt": "2026-10-17T12:00:00.000Z",
+			"sources": {
+				"manifestRevision": 1,
+				"authorityRevision": 1,
+				"workstreamRevision": "ws-p07",
+				"resolvedAt": "2026-10-17T12:00:00.000Z",
+				"effectiveStateRevision": 1,
+				"automationSettingsRevision": 0
+			},
+			"status": "ready",
+			"payload": {
+				"spec": "lattice-fold-preamble/v1",
+				"foldId": "fold-example-0001",
+				"label": "Test Project",
+				"status": "active",
+				"retiredAt": null,
+				"readiness": "awaiting-authority",
+				"revisions": {
+					"manifest": 1,
+					"effectiveState": 1,
+					"authority": 1,
+					"workstream": "ws-p07",
+					"automationSettings": 0
+				},
+				"blueprint": {
+					"blueprintId": "project",
+					"version": "1.0.0"
+				},
+				"authority": {
+					"review": "not-reviewed",
+					"acceptedAt": null,
+					"resolution": "resolved"
+				},
+				"automation": {
+					"consent": "off",
+					"emergencyStop": "clear"
+				},
+				"counts": {
+					"members": 0,
+					"directories": 1,
+					"ruleSets": 1,
+					"rules": 1,
+					"enabledRules": 1,
+					"workflows": 0,
+					"rememberedValues": 5,
+					"diagnostics": {
+						"error": 0,
+						"warning": 1,
+						"info": 0
+					}
+				},
+				"rememberedValues": [
+					{
+						"ref": "instance.PROJECT_TAG",
+						"type": "string",
+						"source": {
+							"kind": "blueprint",
+							"ref": "variable.PROJECT_TAG"
+						},
+						"sensitive": false,
+						"availability": "present",
+						"value": "p07-smoke"
+					},
+					{
+						"ref": "instance.apiKey",
+						"type": "secret",
+						"source": {
+							"kind": "provider",
+							"ref": "keychain"
+						},
+						"sensitive": true,
+						"availability": "reference-only"
+					},
+					{
+						"ref": "instance.password",
+						"type": "string",
+						"source": {
+							"kind": "input",
+							"ref": "input.password"
+						},
+						"sensitive": true,
+						"availability": "present"
+					},
+					{
+						"ref": "instance.synopsis",
+						"type": "string",
+						"source": {
+							"kind": "input",
+							"ref": "input.synopsis"
+						},
+						"sensitive": false,
+						"availability": "present",
+						"value": "An optional synopsis"
+					},
+					{
+						"ref": "instance.title",
+						"type": "string",
+						"source": {
+							"kind": "input",
+							"ref": "input.title"
+						},
+						"sensitive": false,
+						"availability": "present",
+						"value": "Visible Title"
+					}
+				]
+			},
+			"diagnostics": []
+		}
+	]
+}

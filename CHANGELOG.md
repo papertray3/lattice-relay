@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `lattice_orient` and `lattice_fold_describe`: read-only, bounded MCP projection of Lattice Focus (`inspectContext`, Focus API 1.1) and Fold inspection (`inspectFold`, Fold API 1.0), with version negotiation, availability/compatibility/contract/domain error classes, redaction, and explicit unavailable Fold topology (PLAN-001, issue #1)
+- Vendored Lattice contract fixtures with provenance and drift tests (`src/lattice/fixtures/`)
 - `list_plugins()` tool exposes installed plugins (enabled + disabled) with manifest metadata
 - `get_plugin_info()` returns manifest, API method names, and registered hotkeys for a plugin
 - `dataview_query()` executes Dataview queries directly and returns rendered markdown

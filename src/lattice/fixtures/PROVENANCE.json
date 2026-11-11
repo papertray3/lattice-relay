@@ -1,0 +1,42 @@
+{
+	"purpose": "Minimal Lattice public-contract fixtures Relay pins to detect contract drift. They prove adapter behaviour; Lattice's published contracts remain the source of truth.",
+	"hashing": "sha256 of JSON.stringify(JSON.parse(file)) - independent of whitespace and line endings.",
+	"upstream": {
+		"repository": "Lattice Obsidian plugin (private source)",
+		"release": "2.0.0-beta.70",
+		"commit": "87f1b2ee662b4fceecbe1ae18a61016997f21a31",
+		"latticeApiVersion": "2.0",
+		"focusApiVersion": "1.1",
+		"foldApiVersion": "1.0",
+		"vendoredAt": "2026-11-11"
+	},
+	"fixtures": [
+		{
+			"file": "focus/context-envelope.v1.json",
+			"kind": "lattice-published",
+			"upstreamPath": "contracts/focus/context-envelope.v1.json",
+			"upstreamLastChange": "1ecf83a",
+			"sha256": "0b68c3f689269f65fcd679005a08ba26930c81b8388cf314bce739583a6780d9"
+		},
+		{
+			"file": "focus/context-envelope.v1.examples.json",
+			"kind": "lattice-published",
+			"upstreamPath": "contracts/focus/context-envelope.v1.examples.json",
+			"upstreamLastChange": "1ecf83a",
+			"sha256": "c86d71f59141cba7aedb593ee1e332761000838aa7d078e1ae3c7ac94c150e40"
+		},
+		{
+			"file": "fold/preamble.v1.example.json",
+			"kind": "lattice-published",
+			"upstreamPath": "contracts/fold/preamble.v1.example.json",
+			"upstreamLastChange": "1ecf83a",
+			"sha256": "61f0f7cc39a45da3134039ccdda0ea894c93238ca4030dfaff49bf82b0dc50d7"
+		},
+		{
+			"file": "fold/manifest.v2.relay-sample.json",
+			"kind": "relay-authored",
+			"derivedFrom": "src/contracts/fold-manifest.ts and src/contracts/fold-members.ts at 87f1b2e (FoldManifestInventoryV2, FoldMemberRecordV1)",
+			"note": "Lattice publishes no example for lattice.fold.manifest@2.0.0. This sample is Relay's reading of the TypeScript contract and must be replaced by a Lattice-published example when one exists (companion Lattice request)."
+		}
+	]
+}

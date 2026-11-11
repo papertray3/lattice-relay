@@ -8,6 +8,15 @@
 > plugin identities. Renaming those identifiers belongs to an accepted
 > implementation plan, not the repository bootstrap.
 
+## Lattice Context (read-only)
+
+Relay projects Lattice Focus and Fold inspection through two read-only MCP tools:
+
+- `lattice_orient`: where am I working?
+- `lattice_fold_describe`: what is this Fold?
+
+Every answer carries `grantsAuthority: false`, and neither tool changes Focus or the vault. Fold topology is reported only when Lattice declares it. Otherwise it is reported as explicitly unavailable, never inferred. See [Lattice Context Tools](docs/features/lattice-context.md).
+
 ## Imported Bridge Baseline
 
 Direct API access to Obsidian for AI clients via Model Context Protocol.
@@ -182,6 +191,7 @@ env = { OBSIDIAN_MCP_KEY = "your-api-key-from-plugin-settings" }
 - [Architecture Improvements](docs/architecture/improvements.md) - Design decisions
 
 **Features:**
+- [Lattice Context Tools](docs/features/lattice-context.md) - Read-only `lattice_orient` and `lattice_fold_describe`
 - [Dataview Integration](docs/features/dataview-blocks.md) - Execute Dataview queries
 - [Digital Garden Rendering](docs/features/digital-garden.md) - Render notes with plugins
 

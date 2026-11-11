@@ -1,0 +1,31 @@
+{
+	"spec": "lattice-focus-context-envelope/v1",
+	"description": "What api.focus.inspectContext(request) returns (Plan 07). The Focus snapshot plus one inspection of the Fold that snapshot names as current, through Fold's own inspection facets. Focus's TypeScript constants and the Focus envelope examples are tested against this file, so a consumer such as Relay can rely on it without importing Lattice.",
+	"method": "api.focus.inspectContext",
+	"focusApiVersion": "1.1",
+	"request": {
+		"expectedContextRevision": "optional non-negative integer; refuse with outcome 'stale' unless Focus is still at this revision",
+		"foldFacets": "optional non-empty array of Fold facet IDs; deduplicated and sorted; defaults to defaultFoldFacets"
+	},
+	"defaultFoldFacets": ["lattice.fold.preamble@1.0.0"],
+	"maxFoldFacets": 16,
+	"outcomes": ["inspected", "no-current-fold", "stale", "invalid-request", "fold-unavailable", "fold-not-found"],
+	"diagnosticCodes": [
+		"focus.revision.stale",
+		"focus.request.invalid",
+		"focus.current.none",
+		"focus.fold.unavailable",
+		"focus.fold.not-found",
+		"focus.fold.revision-changed",
+		"focus.context.changed-during-inspection"
+	],
+	"guarantees": [
+		"Never throws; every refusal or degradation is an outcome plus diagnostics, and context (the Focus snapshot) is always present.",
+		"contextRevision equals context.revision: the one Focus revision the envelope describes.",
+		"A stale or invalid request inspects nothing; current is null.",
+		"current.fold is the detached lattice-fold-context-envelope/v1 Fold returned for exactly requestedFoldFacets; redaction is Fold's (secret values and secret references never appear).",
+		"Previous and candidate stay Focus identity and evidence only (inside context).",
+		"grantsAuthority is always false; the request cannot reach any Fold method except the read-only inspectFold."
+	],
+	"examples": "context-envelope.v1.examples.json"
+}

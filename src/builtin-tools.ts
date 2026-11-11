@@ -1,5 +1,7 @@
 import { App, TFile } from 'obsidian';
 import { MetadataExtractor } from './metadata-extractor';
+import { LatticeTools } from './lattice/lattice-tools';
+import type { PluginHostLike } from './lattice/discovery';
 
 /**
  * Implementations of the plugin's built-in tools (as opposed to user-defined
@@ -8,7 +10,13 @@ import { MetadataExtractor } from './metadata-extractor';
  * to carry every tool's implementation.
  */
 export class BuiltinTools {
-	constructor(private app: App, private metadataExtractor: MetadataExtractor) {}
+	private readonly lattice: LatticeTools;
+
+	constructor(private app: App, private metadataExtractor: MetadataExtractor, lattice?: LatticeTools) {
+		// Lattice is discovered on every call through its public plugin API, never cached,
+		// so enabling, disabling or upgrading Lattice is reflected without reloading Relay.
+		this.lattice = lattice ?? new LatticeTools(() => this.app as unknown as PluginHostLike);
+	}
 
 	/**
 	 * Dispatches one of this class's tools by name. Does not handle `ping`,
@@ -35,6 +43,9 @@ export class BuiltinTools {
 				return this.resolveWikiLinks(params as unknown as ResolveWikiLinksParams);
 			case 'list_vault_files':
 				return this.listVaultFiles(params as unknown as { folder?: string });
+			case 'lattice_orient':
+			case 'lattice_fold_describe':
+				return this.lattice.execute(method, params);
 			default:
 				throw new Error(`Unknown builtin tool: ${method}`);
 		}
