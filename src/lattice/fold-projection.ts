@@ -359,7 +359,10 @@ export function projectFoldEnvelope(envelope: Record<string, unknown> & { facets
 			if (fold.found) diagnostics.push(relayDiagnostic('relay.facet.missing', 'warning', `Lattice did not answer requested facet ${facetId}.`, facetId));
 			continue;
 		}
-		if (facetId === FACET_TOPOLOGY && fold.topology.status === 'unavailable' && fold.topology.reason === 'lattice-contract-missing') {
+		if (!fold.found) {
+			// Lattice answers every requested facet of an unknown Fold as unavailable and repeats the
+			// envelope-level reason on each. The envelope diagnostic already says it once.
+		} else if (facetId === FACET_TOPOLOGY && fold.topology.status === 'unavailable' && fold.topology.reason === 'lattice-contract-missing') {
 			// Lattice flags any facet it has no provider for as an error. For topology that absence is
 			// the expected state of this release and is already reported as an explicit capability.
 			diagnostics.push(relayDiagnostic('relay.topology.unavailable', 'info', fold.topology.message, facetId));

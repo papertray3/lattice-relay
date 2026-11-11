@@ -235,7 +235,8 @@ describe('lattice_fold_describe', () => {
 		const { relay } = tools({ inspectFold: (request) => notFoundEnvelope(request.foldId, request.facets) });
 		const result = await relay.describe({ foldId: 'fold-nope' });
 		expect(result).toMatchObject({ outcome: 'fold-not-found', errorClass: 'domain', fold: null });
-		expect(result.diagnostics.map((d) => d.code)).toEqual(['inspection.fold.not-found', 'relay.fold.not-found']);
+		// Lattice repeats the reason on every requested facet; Relay reports it once and adds no topology noise.
+		expect(result.diagnostics.map((d) => d.code)).toEqual(['inspection.fold.unknown', 'relay.fold.not-found']);
 	});
 
 	it('refuses an answer about a different Fold than requested', async () => {

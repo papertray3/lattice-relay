@@ -43,6 +43,7 @@ export function foldEnvelope(facets: readonly string[], foldId = 'fold-example-0
 }
 
 export function notFoundEnvelope(foldId: string, facets: readonly string[]) {
+	const unknown = { code: 'inspection.fold.unknown', severity: 'error', message: `No installed Fold has ID "${foldId}".`, origin: 'inspection', path: '$.foldId' };
 	return {
 		spec: 'lattice-fold-context-envelope/v1',
 		foldId,
@@ -54,8 +55,15 @@ export function notFoundEnvelope(foldId: string, facets: readonly string[]) {
 		generatedAt: '2026-10-17T12:00:00.000Z',
 		requestedFacets: [...facets],
 		observationWatermark: null,
-		diagnostics: [{ code: 'inspection.fold.not-found', severity: 'error', message: `No Fold ${foldId}.`, origin: 'inspection' }],
-		facets: [],
+		diagnostics: [unknown],
+		// As inspection.ts answers an unknown Fold (and as observed live on beta.69): every requested
+		// facet is listed as unavailable, carrying the not-found reason, or the unsupported reason when
+		// no provider exists.
+		facets: facets.map((facetId) =>
+			facetId === FACET_TOPOLOGY
+				? unsupportedFacet(facetId)
+				: { facetId, provider: 'lattice-fold.builtin-inspection@1.0.0', generatedAt: '2026-10-17T12:00:00.000Z', sources: {}, status: 'unavailable', payload: null, diagnostics: [unknown] },
+		),
 	};
 }
 
