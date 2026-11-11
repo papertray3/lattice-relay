@@ -1,8 +1,16 @@
 {
-  "name": "obsidian-mcp-bridge",
+  "name": "lattice-relay",
   "version": "0.1.0",
-  "description": "Obsidian MCP Bridge - Direct API access for AI clients",
+  "description": "Governed MCP projection of Lattice context and operations",
   "main": "main.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/papertray3/lattice-relay.git"
+  },
+  "homepage": "https://github.com/papertray3/lattice-relay#readme",
+  "bugs": {
+    "url": "https://github.com/papertray3/lattice-relay/issues"
+  },
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",

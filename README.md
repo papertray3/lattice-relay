@@ -1,6 +1,14 @@
-# Obsidian MCP Bridge
+# Lattice Relay
 
-**WebSocket & MCP Server for Obsidian - Phase I Infrastructure**
+**Governed MCP projection of Lattice context, inspection, briefing, and confirmed operations.**
+
+> **Bootstrap status:** This repository continues the history of
+> [`papertray3/obsidian-mcp-bridge`](https://github.com/papertray3/obsidian-mcp-bridge).
+> The imported runtime still uses the `obsidian-mcp-bridge` package and Obsidian
+> plugin identities. Renaming those identifiers belongs to an accepted
+> implementation plan, not the repository bootstrap.
+
+## Imported Bridge Baseline
 
 Direct API access to Obsidian for AI clients via Model Context Protocol.
 
