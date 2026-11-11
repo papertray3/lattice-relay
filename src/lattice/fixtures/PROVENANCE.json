@@ -3,8 +3,8 @@
 	"hashing": "sha256 of JSON.stringify(JSON.parse(file)) - independent of whitespace and line endings.",
 	"upstream": {
 		"repository": "Lattice Obsidian plugin (private source)",
-		"release": "2.0.0-beta.70",
-		"commit": "87f1b2ee662b4fceecbe1ae18a61016997f21a31",
+		"release": "2.0.0-beta.70 (fixtures from unreleased source commit ae4f5ce)",
+		"commit": "ae4f5ce50a1d486d0b9c716e3eb0af92ecfcbdd4",
 		"latticeApiVersion": "2.0",
 		"focusApiVersion": "1.1",
 		"foldApiVersion": "1.0",
@@ -33,10 +33,18 @@
 			"sha256": "61f0f7cc39a45da3134039ccdda0ea894c93238ca4030dfaff49bf82b0dc50d7"
 		},
 		{
-			"file": "fold/manifest.v2.relay-sample.json",
-			"kind": "relay-authored",
-			"derivedFrom": "src/contracts/fold-manifest.ts and src/contracts/fold-members.ts at 87f1b2e (FoldManifestInventoryV2, FoldMemberRecordV1)",
-			"note": "Lattice publishes no example for lattice.fold.manifest@2.0.0. This sample is Relay's reading of the TypeScript contract and must be replaced by a Lattice-published example when one exists (companion Lattice request)."
+			"file": "fold/manifest.v2.example.json",
+			"kind": "lattice-published",
+			"upstreamPath": "contracts/fold/manifest.v2.example.json",
+			"upstreamLastChange": "ae4f5ce",
+			"sha256": "76ca018e9615a33b85e96703f076eb164012b71e12117253df20387b9cade95e"
+		},
+		{
+			"file": "fold/topology.v1.example.json",
+			"kind": "lattice-published",
+			"upstreamPath": "contracts/fold/topology.v1.example.json",
+			"upstreamLastChange": "ae4f5ce",
+			"sha256": "c96bb6a21b3e2370561e2169cdfc77c02c7092b749e20e60fe8a3db0f05d4248"
 		}
 	]
 }

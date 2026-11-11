@@ -63,18 +63,49 @@ export interface RelayFoldRef {
 	label: string | null;
 }
 
+/**
+ * A Fold reached through a declared, active `partOf` relation. A superset of
+ * `RelayFoldRef`, so the field names and array shape are unchanged.
+ */
+export interface RelayTopologyNode extends RelayFoldRef {
+	/** `active`, `retired` (installed but retired) or `missing` (no longer installed). */
+	endpointStatus: string | null;
+	depth: number | null;
+	relationId: string | null;
+	relationLabel: string | null;
+	/** The relation role's bounded meaning, from Lattice's vault-global role registry. */
+	role: { roleId: string; resolution: string | null; label: string | null; summary: string | null } | null;
+}
+
+/** Lattice's own completeness for one topology collection. */
+export interface RelayTopologyCompleteness {
+	returned: number;
+	total: number | null;
+	complete: boolean;
+	truncated: boolean;
+	truncation: { reason: string; limit: number | null } | null;
+}
+
 export type RelayTopology =
 	| {
 			status: 'declared';
 			policy: 'declared-only';
 			facetId: string;
 			provider: string | null;
-			parent: RelayFoldRef | null;
-			ancestors: RelayFoldRef[];
-			siblings: RelayFoldRef[];
-			children: RelayFoldRef[];
-			descendants: RelayFoldRef[];
+			/** Lattice's vault-wide relation revision this answer was derived from. */
+			topologyRevision: number | null;
+			/** The declared relation type topology is derived from (`partOf`). */
+			relationType: string | null;
+			parent: RelayTopologyNode | null;
+			ancestors: RelayTopologyNode[];
+			siblings: RelayTopologyNode[];
+			children: RelayTopologyNode[];
+			descendants: RelayTopologyNode[];
+			/** Per collection, exactly as Lattice bounded it. */
+			completeness: Record<'ancestors' | 'siblings' | 'children' | 'descendants', RelayTopologyCompleteness>;
+			/** True when Lattice or Relay's own bound cut any collection. */
 			truncated: boolean;
+			grantsAuthority: false;
 	  }
 	| {
 			status: 'unavailable';
@@ -270,19 +301,51 @@ function projectManifest(payload: unknown, out: RelayFoldDescription): boolean {
 	return true;
 }
 
-function foldRefs(value: unknown, budget: { remaining: number; truncated: boolean }): RelayFoldRef[] | null {
-	if (!Array.isArray(value)) return null;
-	const refs: RelayFoldRef[] = [];
-	for (const raw of value) {
-		if (!isRecord(raw) || typeof raw.foldId !== 'string') return null;
+function topologyNode(raw: unknown): RelayTopologyNode | null {
+	if (!isRecord(raw) || typeof raw.foldId !== 'string') return null;
+	const role = isRecord(raw.role) && typeof raw.role.roleId === 'string'
+		? { roleId: clip(raw.role.roleId, 200) as string, resolution: clip(raw.role.resolution, 40), label: clip(raw.role.label), summary: clip(raw.role.summary) }
+		: null;
+	return {
+		foldId: clip(raw.foldId, 200) as string,
+		label: clip(raw.label),
+		endpointStatus: clip(raw.endpointStatus, 40),
+		depth: num(raw.depth),
+		relationId: clip(raw.relationId, 200),
+		relationLabel: clip(raw.relationLabel),
+		role,
+	};
+}
+
+/** One Lattice completeness envelope, cut further by Relay's shared budget when needed. */
+function topologyCollection(value: unknown, budget: { remaining: number; truncated: boolean }): { items: RelayTopologyNode[]; completeness: RelayTopologyCompleteness } | null {
+	if (!isRecord(value) || !Array.isArray(value.items) || typeof value.complete !== 'boolean' || typeof value.truncated !== 'boolean') return null;
+	const items: RelayTopologyNode[] = [];
+	let relayCut = false;
+	for (const raw of value.items) {
+		const node = topologyNode(raw);
+		if (!node) return null;
 		if (budget.remaining <= 0) {
-			budget.truncated = true;
+			relayCut = budget.truncated = true;
 			break;
 		}
 		budget.remaining -= 1;
-		refs.push({ foldId: clip(raw.foldId, 200) as string, label: clip(raw.label) });
+		items.push(node);
 	}
-	return refs;
+	const truncation = isRecord(value.truncation) && typeof value.truncation.reason === 'string'
+		? { reason: clip(value.truncation.reason, 40) as string, limit: num(value.truncation.limit) }
+		: relayCut ? { reason: 'relay-limit', limit: LIMITS.topologyRelations } : null;
+	if (value.truncated) budget.truncated = true;
+	return {
+		items,
+		completeness: {
+			returned: items.length,
+			total: num(value.total),
+			complete: value.complete && !relayCut,
+			truncated: value.truncated || relayCut,
+			truncation,
+		},
+	};
 }
 
 /**
@@ -298,25 +361,41 @@ export function projectTopology(facet: FacetResult | undefined, requested: boole
 	if (facet.status === 'unavailable') {
 		const unsupported = Array.isArray(facet.diagnostics) && facet.diagnostics.some((d) => isRecord(d) && d.code === 'inspection.facet.unsupported');
 		return unsupported
-			? unavailable('lattice-contract-missing', 'This Lattice publishes no declared Fold topology contract yet, so parent, ancestor, sibling, child and descendant Folds are unknown. Relay does not infer them.')
+			? unavailable('lattice-contract-missing', 'This Lattice build does not publish the declared Fold topology contract (lattice.fold.topology@1.0.0), so parent, ancestor, sibling, child and descendant Folds are unknown. Relay does not infer them.')
 			: unavailable('facet-unavailable', 'Lattice reported the topology facet as unavailable for this Fold.');
 	}
 	if (facet.status === 'failed') return unavailable('facet-failed', 'Lattice failed to compute the topology facet for this Fold.');
 	const payload = facet.payload;
 	if (!isRecord(payload) || payload.spec !== FOLD_TOPOLOGY_SPEC) return unavailable('unsupported-shape', `Lattice served a topology facet Relay does not understand (expected ${FOLD_TOPOLOGY_SPEC}).`);
+	// Topology never carries authority; anything else is not the contract Relay pins.
+	if (payload.grantsAuthority !== false) return unavailable('unsupported-shape', 'Lattice topology facet does not state grantsAuthority: false; it was ignored.');
 	const budget = { remaining: LIMITS.topologyRelations, truncated: false };
-	const parentRaw = payload.parent;
-	let parent: RelayFoldRef | null = null;
-	if (parentRaw !== null) {
-		if (!isRecord(parentRaw) || typeof parentRaw.foldId !== 'string') return unavailable('unsupported-shape', 'Lattice topology facet has a malformed parent.');
-		parent = { foldId: clip(parentRaw.foldId, 200) as string, label: clip(parentRaw.label) };
+	let parent: RelayTopologyNode | null = null;
+	if (payload.parent !== null) {
+		parent = topologyNode(payload.parent);
+		if (!parent) return unavailable('unsupported-shape', 'Lattice topology facet has a malformed parent.');
 	}
-	const ancestors = foldRefs(payload.ancestors, budget);
-	const siblings = foldRefs(payload.siblings, budget);
-	const children = foldRefs(payload.children, budget);
-	const descendants = foldRefs(payload.descendants, budget);
-	if (!ancestors || !siblings || !children || !descendants) return unavailable('unsupported-shape', 'Lattice topology facet is missing or has malformed relationship lists.');
-	return { status: 'declared', policy: 'declared-only', facetId: FACET_TOPOLOGY, provider: facet.provider, parent, ancestors, siblings, children, descendants, truncated: budget.truncated };
+	const ancestors = topologyCollection(payload.ancestors, budget);
+	const siblings = topologyCollection(payload.siblings, budget);
+	const children = topologyCollection(payload.children, budget);
+	const descendants = topologyCollection(payload.descendants, budget);
+	if (!ancestors || !siblings || !children || !descendants) return unavailable('unsupported-shape', 'Lattice topology facet is missing or has malformed relationship collections.');
+	return {
+		status: 'declared',
+		policy: 'declared-only',
+		facetId: FACET_TOPOLOGY,
+		provider: facet.provider,
+		topologyRevision: num(payload.topologyRevision),
+		relationType: clip(payload.relationType, 40),
+		parent,
+		ancestors: ancestors.items,
+		siblings: siblings.items,
+		children: children.items,
+		descendants: descendants.items,
+		completeness: { ancestors: ancestors.completeness, siblings: siblings.completeness, children: children.completeness, descendants: descendants.completeness },
+		truncated: budget.truncated,
+		grantsAuthority: false,
+	};
 }
 
 /**

@@ -1,0 +1,182 @@
+{
+	"spec": "lattice-fold-context-envelope/v1",
+	"foldId": "fold-example-0001",
+	"found": true,
+	"manifestRevision": 2,
+	"effectiveStateRevision": 2,
+	"authorityRevision": 2,
+	"workstreamRevision": "b1",
+	"generatedAt": "2026-10-18T12:00:00.000Z",
+	"requestedFacets": [
+		"lattice.fold.manifest@2.0.0"
+	],
+	"observationWatermark": null,
+	"diagnostics": [],
+	"facets": [
+		{
+			"facetId": "lattice.fold.manifest@2.0.0",
+			"provider": {
+				"providerId": "lattice-fold.builtin-inspection",
+				"version": "1.0.0"
+			},
+			"generatedAt": "2026-10-18T12:00:00.000Z",
+			"sources": {
+				"manifestRevision": 2,
+				"workstreamRevision": "b1"
+			},
+			"status": "ready",
+			"payload": {
+				"spec": "lattice-fold-manifest-inventory/v2",
+				"foldId": "fold-example-0001",
+				"foldRevision": 2,
+				"observedAt": "2026-10-18T12:00:00.000Z",
+				"indexReady": true,
+				"completeness": "complete",
+				"members": [
+					{
+						"memberId": "charter:0",
+						"artifactId": "artifact-0acd9778433de5267b658b642feef76b",
+						"role": "charter",
+						"ordinal": 0,
+						"state": "present",
+						"path": "Projects/papertrail/00_Admin/00-charter.md",
+						"title": "charter",
+						"target": "Projects/papertrail/00_Admin/00-charter",
+						"link": "[[Projects/papertrail/00_Admin/00-charter]]",
+						"blueprint": {
+							"blueprintId": "project.charter",
+							"version": "1.0.1"
+						},
+						"creation": "initial"
+					},
+					{
+						"memberId": "hub:0",
+						"artifactId": "artifact-90e2fd27f13ad1c8c906c961c15af3eb",
+						"role": "hub",
+						"ordinal": 0,
+						"state": "present",
+						"path": "Projects/papertrail/papertrail.md",
+						"title": "hub",
+						"target": "Projects/papertrail/papertrail",
+						"link": "[[Projects/papertrail/papertrail]]",
+						"blueprint": {
+							"blueprintId": "project.hub",
+							"version": "1.0.1"
+						},
+						"creation": "initial"
+					}
+				],
+				"resources": [
+					{
+						"path": "Projects/papertrail/00_Admin/00-charter.md",
+						"kind": "note",
+						"labels": [
+							{
+								"kind": "context-match",
+								"anchorId": "project-tree"
+							},
+							{
+								"kind": "member",
+								"memberId": "charter:0",
+								"role": "charter"
+							},
+							{
+								"kind": "connected",
+								"fromMemberId": "hub:0",
+								"connection": "link"
+							}
+						],
+						"hiddenByDefault": false
+					},
+					{
+						"path": "Projects/papertrail/Callouts Guide.md",
+						"kind": "note",
+						"labels": [
+							{
+								"kind": "context-match",
+								"anchorId": "project-tree"
+							}
+						],
+						"hiddenByDefault": false
+					},
+					{
+						"path": "Projects/papertrail/cover.png",
+						"kind": "image",
+						"labels": [
+							{
+								"kind": "context-match",
+								"anchorId": "project-tree"
+							}
+						],
+						"hiddenByDefault": true
+					},
+					{
+						"path": "Projects/papertrail/papertrail.md",
+						"kind": "note",
+						"labels": [
+							{
+								"kind": "context-match",
+								"anchorId": "project-tree"
+							},
+							{
+								"kind": "member",
+								"memberId": "hub:0",
+								"role": "hub"
+							}
+						],
+						"hiddenByDefault": false
+					}
+				],
+				"coverage": {
+					"scopes": [
+						{
+							"anchorId": "project-tree",
+							"directoryId": "project-root",
+							"path": "Projects/papertrail",
+							"reach": "descendants"
+						}
+					],
+					"withheld": [],
+					"unavailable": []
+				},
+				"connections": {
+					"kinds": [
+						"link",
+						"embed"
+					],
+					"depth": 1,
+					"backlinks": false
+				},
+				"display": {
+					"nonMarkdown": "hidden",
+					"hiddenCount": 1
+				},
+				"limits": {
+					"maxResources": 2000,
+					"truncated": false
+				},
+				"inclusion": {
+					"anchors": [
+						{
+							"anchorId": "project-tree",
+							"required": true,
+							"scope": "directory",
+							"status": "evaluated",
+							"matched": 4
+						}
+					],
+					"evaluated": 4,
+					"included": 4,
+					"notIncluded": 0,
+					"withheld": {},
+					"unindexed": 0,
+					"limits": {
+						"maxEvaluated": 20000,
+						"truncated": false
+					}
+				}
+			},
+			"diagnostics": []
+		}
+	]
+}

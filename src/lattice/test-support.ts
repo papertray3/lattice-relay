@@ -8,11 +8,15 @@
 import { vi } from 'vitest';
 import examples from './fixtures/focus/context-envelope.v1.examples.json';
 import preambleEnvelope from './fixtures/fold/preamble.v1.example.json';
-import manifestFacet from './fixtures/fold/manifest.v2.relay-sample.json';
+import manifestEnvelope from './fixtures/fold/manifest.v2.example.json';
+import topologyEnvelope from './fixtures/fold/topology.v1.example.json';
 import { FACET_TOPOLOGY } from './contract';
 import type { PluginHostLike } from './discovery';
 
 export const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+
+/** Lattice's published manifest facet: its canonical `manifest.v2.example.json`, as answered for a two-member Project. */
+export const manifestFacet = manifestEnvelope.facets[0];
 
 /** What Lattice actually answers for a facet no provider supplies (inspection.ts unsupportedFacet). */
 export function unsupportedFacet(facetId: string) {
@@ -75,22 +79,11 @@ export function inspectedEnvelope(facets: readonly string[]): Record<string, any
 	return envelope;
 }
 
-export const DECLARED_TOPOLOGY = {
-	facetId: FACET_TOPOLOGY,
-	provider: { providerId: 'lattice-fold.topology', version: '1.0.0' },
-	generatedAt: '2026-10-17T12:00:00.000Z',
-	sources: { manifestRevision: 1 },
-	status: 'ready',
-	payload: {
-		spec: 'lattice-fold-topology/v1',
-		parent: { foldId: 'fold-office', label: 'Office' },
-		ancestors: [{ foldId: 'fold-office', label: 'Office' }],
-		siblings: [{ foldId: 'fold-next-door', label: 'Next door' }],
-		children: [{ foldId: 'fold-inner', label: 'Inner chamber' }],
-		descendants: [{ foldId: 'fold-inner', label: 'Inner chamber' }],
-	},
-	diagnostics: [],
-};
+/**
+ * Lattice's published topology facet: `topology.v1.example.json`, the first
+ * acceptance case - Lattice Relay `partOf` Lattice with role `component`.
+ */
+export const DECLARED_TOPOLOGY = topologyEnvelope.facets[0];
 
 export interface FakeLatticeOptions {
 	inspectContext?: (request: any) => unknown | Promise<unknown>;

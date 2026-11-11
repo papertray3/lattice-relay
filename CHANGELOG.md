@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Fold topology now projects Lattice's published `lattice.fold.topology@1.0.0` (Lattice PLAN-006): each node adds its endpoint status, depth, relation, and role meaning beside the existing `{ foldId, label }` fields; a new `completeness` object carries Lattice's per-collection bounds; and a facet without `grantsAuthority: false` is refused as `unsupported-shape`.
+- Contract fixtures now pin Lattice's canonical manifest and topology examples. The Relay-authored manifest sample is removed.
+
 ### Added
 - `lattice_orient` and `lattice_fold_describe`: read-only, bounded MCP projection of Lattice Focus (`inspectContext`, Focus API 1.1) and Fold inspection (`inspectFold`, Fold API 1.0), with version negotiation, availability/compatibility/contract/domain error classes, redaction, and explicit unavailable Fold topology (PLAN-001, issue #1)
 - Vendored Lattice contract fixtures with provenance and drift tests (`src/lattice/fixtures/`)

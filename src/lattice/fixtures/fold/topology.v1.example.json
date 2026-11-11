@@ -1,0 +1,120 @@
+{
+	"spec": "lattice-fold-context-envelope/v1",
+	"foldId": "fold-example-relay",
+	"found": true,
+	"manifestRevision": 2,
+	"effectiveStateRevision": 2,
+	"authorityRevision": 2,
+	"workstreamRevision": "ws-relations",
+	"generatedAt": "2026-11-11T12:00:00.000Z",
+	"requestedFacets": [
+		"lattice.fold.topology@1.0.0"
+	],
+	"observationWatermark": null,
+	"diagnostics": [],
+	"facets": [
+		{
+			"facetId": "lattice.fold.topology@1.0.0",
+			"provider": {
+				"providerId": "lattice-fold.builtin-inspection",
+				"version": "1.0.0"
+			},
+			"generatedAt": "2026-11-11T12:00:00.000Z",
+			"sources": {
+				"topologyRevision": 2,
+				"roleRegistryRevision": 1
+			},
+			"status": "ready",
+			"payload": {
+				"spec": "lattice-fold-topology/v1",
+				"foldId": "fold-example-relay",
+				"fold": {
+					"foldId": "fold-example-relay",
+					"label": "Lattice Relay",
+					"endpointStatus": "active",
+					"foldStatus": "active"
+				},
+				"topologyRevision": 2,
+				"relationType": "partOf",
+				"parent": {
+					"foldId": "fold-example-lattice",
+					"label": "Lattice",
+					"endpointStatus": "active",
+					"foldStatus": "active",
+					"relationId": "relation-df06c34d2dc1ef54dacf6dab",
+					"roleId": "component",
+					"role": {
+						"roleId": "component",
+						"resolution": "active",
+						"label": "Component",
+						"summary": "An independently governed part that contributes one bounded capability.",
+						"revision": 1,
+						"definitionRef": null
+					},
+					"relationLabel": "Governed MCP protocol boundary",
+					"depth": 1
+				},
+				"ancestors": {
+					"items": [
+						{
+							"foldId": "fold-example-lattice",
+							"label": "Lattice",
+							"endpointStatus": "active",
+							"foldStatus": "active",
+							"relationId": "relation-df06c34d2dc1ef54dacf6dab",
+							"roleId": "component",
+							"role": {
+								"roleId": "component",
+								"resolution": "active",
+								"label": "Component",
+								"summary": "An independently governed part that contributes one bounded capability.",
+								"revision": 1,
+								"definitionRef": null
+							},
+							"relationLabel": "Governed MCP protocol boundary",
+							"depth": 1
+						}
+					],
+					"returned": 1,
+					"total": 1,
+					"complete": true,
+					"truncated": false,
+					"truncation": null
+				},
+				"siblings": {
+					"items": [],
+					"returned": 0,
+					"total": 0,
+					"complete": true,
+					"truncated": false,
+					"truncation": null
+				},
+				"children": {
+					"items": [],
+					"returned": 0,
+					"total": 0,
+					"complete": true,
+					"truncated": false,
+					"truncation": null
+				},
+				"descendants": {
+					"items": [],
+					"returned": 0,
+					"total": 0,
+					"complete": true,
+					"truncated": false,
+					"truncation": null
+				},
+				"bounds": {
+					"ancestorDepth": 16,
+					"siblingItems": 50,
+					"childItems": 50,
+					"descendantDepth": 4,
+					"descendantItems": 100
+				},
+				"grantsAuthority": false
+			},
+			"diagnostics": []
+		}
+	]
+}

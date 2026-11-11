@@ -5,16 +5,19 @@ import { describe, expect, it } from 'vitest';
 import contract from './fixtures/focus/context-envelope.v1.json';
 import examples from './fixtures/focus/context-envelope.v1.examples.json';
 import preambleEnvelope from './fixtures/fold/preamble.v1.example.json';
-import manifestFacet from './fixtures/fold/manifest.v2.relay-sample.json';
+import manifestEnvelope from './fixtures/fold/manifest.v2.example.json';
+import topologyEnvelope from './fixtures/fold/topology.v1.example.json';
 import provenance from './fixtures/PROVENANCE.json';
 import {
 	FACET_MANIFEST,
 	FACET_PREAMBLE,
+	FACET_TOPOLOGY,
 	FOCUS_CONTEXT_ENVELOPE_SPEC,
 	FOCUS_OUTCOMES,
 	FOLD_CONTEXT_ENVELOPE_SPEC,
 	FOLD_MANIFEST_INVENTORY_SPEC,
 	FOLD_PREAMBLE_SPEC,
+	FOLD_TOPOLOGY_SPEC,
 	MAX_FOLD_FACETS,
 	SUPPORTED_FOCUS_API,
 } from './contract';
@@ -96,14 +99,34 @@ describe('published examples project cleanly', () => {
 		expect(byRef['instance.synopsis'].value).toBe('An optional synopsis');
 	});
 
-	it('accepts the Relay-authored manifest sample', () => {
+	it('accepts the Lattice-published manifest example', () => {
+		const manifestFacet = manifestEnvelope.facets[0];
+		expect(manifestEnvelope.spec).toBe(FOLD_CONTEXT_ENVELOPE_SPEC);
 		expect(manifestFacet.facetId).toBe(FACET_MANIFEST);
 		expect(manifestFacet.payload.spec).toBe(FOLD_MANIFEST_INVENTORY_SPEC);
-		const envelope = clone(preambleEnvelope) as Record<string, any>;
-		envelope.facets = [clone(manifestFacet)];
+		const envelope = clone(manifestEnvelope) as Record<string, any>;
 		assertFoldEnvelope(envelope);
-		const { fold } = projectFoldEnvelope(envelope, [FACET_MANIFEST]);
-		expect(fold.members.items).toHaveLength(2);
-		expect(fold.folders.items).toEqual([{ path: 'Projects/test', reach: 'descendants' }]);
+		const { fold, diagnostics } = projectFoldEnvelope(envelope, [FACET_MANIFEST]);
+		expect(diagnostics).toEqual([]);
+		expect(fold.members.items.map((member) => member.role)).toEqual(['charter', 'hub']);
+		expect(fold.folders.items).toEqual([{ path: 'Projects/papertrail', reach: 'descendants' }]);
+	});
+
+	it('accepts the Lattice-published topology example as declared topology', () => {
+		const topologyFacet = topologyEnvelope.facets[0];
+		expect(topologyFacet.facetId).toBe(FACET_TOPOLOGY);
+		expect(topologyFacet.payload.spec).toBe(FOLD_TOPOLOGY_SPEC);
+		const envelope = clone(topologyEnvelope) as Record<string, any>;
+		assertFoldEnvelope(envelope);
+		const { fold, diagnostics } = projectFoldEnvelope(envelope, [FACET_TOPOLOGY]);
+		expect(diagnostics).toEqual([]);
+		expect(fold.facets).toEqual([{ facetId: FACET_TOPOLOGY, status: 'ready', provider: 'lattice-fold.builtin-inspection@1.0.0' }]);
+		expect(fold.topology).toMatchObject({
+			status: 'declared',
+			relationType: 'partOf',
+			topologyRevision: topologyFacet.payload.topologyRevision,
+			parent: { foldId: 'fold-example-lattice', label: 'Lattice', endpointStatus: 'active', relationLabel: 'Governed MCP protocol boundary', role: { roleId: 'component', resolution: 'active', label: 'Component' } },
+			grantsAuthority: false,
+		});
 	});
 });

@@ -29,12 +29,12 @@ export const FACET_PREAMBLE = 'lattice.fold.preamble@1.0.0';
 export const FACET_MANIFEST = 'lattice.fold.manifest@2.0.0';
 
 /**
- * The facet id Relay requests for declared Fold topology. Lattice does not
- * serve it yet (it answers `unavailable` / `inspection.facet.unsupported`),
- * so Relay reports topology as an explicit unavailable capability. The id is
- * Relay's proposal to the companion Lattice contract plan; when Lattice
- * publishes the facet under this id, Relay consumes it without a tool
- * redesign. Relay never derives topology from paths, links or folders.
+ * Declared Fold topology, published by Lattice from source commit ae4f5ce
+ * (PLAN-006) and pinned by fixtures/fold/topology.v1.example.json. It is
+ * derived only from explicit, active `partOf` relations. A Lattice without a
+ * provider answers `unavailable` / `inspection.facet.unsupported`, which
+ * Relay reports as an explicit unavailable capability. Relay never derives
+ * topology from paths, links or folders.
  */
 export const FACET_TOPOLOGY = 'lattice.fold.topology@1.0.0';
 export const FOLD_TOPOLOGY_SPEC = 'lattice-fold-topology/v1';

@@ -94,7 +94,58 @@ Each diagnostic has `code`, `severity`, `message`, `origin` (`relay`, `lattice.f
 
 ## Topology: declared or explicitly unavailable
 
-Relay reports a Fold's parent, ancestors, siblings, children and descendants **only** from a Lattice-declared facet. It requests `lattice.fold.topology@1.0.0`. Lattice `2.0.0-beta.70` has no provider for that facet, so the answer today is:
+Relay reports a Fold's parent, ancestors, siblings, children and descendants **only** from a Lattice-declared facet. It requests `lattice.fold.topology@1.0.0`, which Lattice publishes from source commit `ae4f5ce` onward (Lattice PLAN-006).
+
+Lattice derives that topology only from explicit, active `partOf` relations between Folds. An owner declares each one; nothing is inferred from paths, membership, links or names. Lattice's `contracts/fold/relations.v1.md` documents the model.
+
+When Lattice serves `lattice-fold-topology/v1`, Relay returns `status: "declared"`:
+
+```json
+{
+  "status": "declared",
+  "policy": "declared-only",
+  "facetId": "lattice.fold.topology@1.0.0",
+  "provider": "lattice-fold.builtin-inspection@1.0.0",
+  "topologyRevision": 2,
+  "relationType": "partOf",
+  "parent": {
+    "foldId": "fold-lattice",
+    "label": "Lattice",
+    "endpointStatus": "active",
+    "depth": 1,
+    "relationId": "relation-...",
+    "relationLabel": "Governed MCP protocol boundary",
+    "role": { "roleId": "component", "resolution": "active", "label": "Component", "summary": "An independently governed part ..." }
+  },
+  "ancestors": [ { "foldId": "fold-lattice", "...": "..." } ],
+  "siblings": [],
+  "children": [],
+  "descendants": [],
+  "completeness": {
+    "ancestors": { "returned": 1, "total": 1, "complete": true, "truncated": false, "truncation": null },
+    "siblings": { "...": "..." },
+    "children": { "...": "..." },
+    "descendants": { "...": "..." }
+  },
+  "truncated": false,
+  "grantsAuthority": false
+}
+```
+
+- **Nodes.** Each node keeps the earlier `{ foldId, label }` fields and adds:
+  - `endpointStatus`: `active`, `retired`, or `missing` (no longer installed, labelled from Lattice's breadcrumb);
+  - `depth`;
+  - the connecting relation's ID and label;
+  - the relation role's bounded meaning, from Lattice's vault-global role registry.
+- **Completeness.** `completeness` carries Lattice's own bound and completeness for each collection. A cut has a `truncation.reason`:
+  - `item-limit` or `depth-limit`: a bound was reached;
+  - `cycle` or `missing-endpoint`: the walk stopped at that point;
+  - `relay-limit`: Relay's own 100-node budget was reached.
+
+  `truncated` is true if any collection was cut.
+- **Refusals.** A topology facet in another shape, or without `grantsAuthority: false`, is reported as `unsupported-shape` and its data is ignored.
+
+Against a Lattice build without the facet (for example `2.0.0-beta.70`), the answer is:
 
 ```json
 {
@@ -102,13 +153,11 @@ Relay reports a Fold's parent, ancestors, siblings, children and descendants **o
   "policy": "declared-only",
   "facetId": "lattice.fold.topology@1.0.0",
   "reason": "lattice-contract-missing",
-  "message": "This Lattice publishes no declared Fold topology contract yet, ..."
+  "message": "This Lattice build does not publish the declared Fold topology contract (lattice.fold.topology@1.0.0), ..."
 }
 ```
 
 Lattice marks an unsupported facet with an `error` diagnostic. For topology, Relay replaces that with one informational `relay.topology.unavailable` diagnostic, because the absence is already reported as a capability.
-
-When Lattice serves `lattice-fold-topology/v1` (`parent`, `ancestors`, `siblings`, `children`, `descendants`, each a `{ foldId, label }` ref), Relay returns `status: "declared"` with those relationships. The tools do not change shape. A topology facet in any other shape is reported as `unsupported-shape`.
 
 Relay never derives topology from vault paths, folder containment, filenames, links, or activation anchors. Tests prove that nested folders and cross-Fold links produce no relationships.
 
@@ -136,7 +185,12 @@ Lattice is rediscovered on every call. Enabling, disabling, upgrading or late-lo
 
 ## Contract fixtures
 
-`src/lattice/fixtures/` vendors Lattice's published Focus envelope contract, its examples and the preamble example. Its `PROVENANCE.json` records the source commit and a canonical hash for each file. `contract.test.ts` fails if a fixture changes or if Relay's pinned constants drift from the contract.
+`src/lattice/fixtures/` vendors these published Lattice examples:
+
+- the Focus envelope contract and its examples;
+- the preamble example;
+- the manifest example (`manifest.v2.example.json`);
+- the topology example (`topology.v1.example.json`). Its `PROVENANCE.json` records the source commit and a canonical hash for each file. `contract.test.ts` fails if a fixture changes or if Relay's pinned constants drift from the contract.
 
 To compare the fixtures with a Lattice checkout, run:
 
@@ -144,4 +198,4 @@ To compare the fixtures with a Lattice checkout, run:
 LATTICE_CONTRACTS_DIR=<lattice>/contracts npx vitest run src/lattice/contract.test.ts
 ```
 
-Lattice publishes no example for `lattice.fold.manifest@2.0.0`. `fold/manifest.v2.relay-sample.json` is Relay-authored from the TypeScript contract and is marked that way in `PROVENANCE.json`.
+Every fixture is Lattice-published. The earlier Relay-authored manifest sample was replaced by Lattice's canonical example.

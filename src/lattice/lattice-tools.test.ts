@@ -63,11 +63,11 @@ describe('lattice_orient', () => {
 			total: 2,
 			truncated: false,
 			items: [
-				{ memberId: 'member-charter', role: 'charter', state: 'missing', path: 'Projects/test/00_Admin/charter.md', title: 'Charter', creation: 'initial' },
-				{ memberId: 'member-hub', role: 'hub', state: 'present', path: 'Projects/test/test.md', title: 'Test Project', creation: 'initial' },
+				{ memberId: 'charter:0', role: 'charter', state: 'present', path: 'Projects/papertrail/00_Admin/00-charter.md', title: 'charter', creation: 'initial' },
+				{ memberId: 'hub:0', role: 'hub', state: 'present', path: 'Projects/papertrail/papertrail.md', title: 'hub', creation: 'initial' },
 			],
 		});
-		expect(fold.folders).toEqual({ status: 'ready', truncated: false, items: [{ path: 'Projects/test', reach: 'descendants' }] });
+		expect(fold.folders).toEqual({ status: 'ready', truncated: false, items: [{ path: 'Projects/papertrail', reach: 'descendants' }] });
 		expect(result.folds).toEqual({
 			truncated: false,
 			items: [
@@ -96,18 +96,59 @@ describe('lattice_orient', () => {
 			},
 		});
 		const topology = (await relay.orient()).currentFold!.topology;
+		const node = {
+			foldId: 'fold-example-lattice',
+			label: 'Lattice',
+			endpointStatus: 'active',
+			depth: 1,
+			relationId: 'relation-df06c34d2dc1ef54dacf6dab',
+			relationLabel: 'Governed MCP protocol boundary',
+			role: { roleId: 'component', resolution: 'active', label: 'Component', summary: 'An independently governed part that contributes one bounded capability.' },
+		};
+		const complete = (returned: number) => ({ returned, total: returned, complete: true, truncated: false, truncation: null });
 		expect(topology).toEqual({
 			status: 'declared',
 			policy: 'declared-only',
 			facetId: FACET_TOPOLOGY,
-			provider: 'lattice-fold.topology@1.0.0',
-			parent: { foldId: 'fold-office', label: 'Office' },
-			ancestors: [{ foldId: 'fold-office', label: 'Office' }],
-			siblings: [{ foldId: 'fold-next-door', label: 'Next door' }],
-			children: [{ foldId: 'fold-inner', label: 'Inner chamber' }],
-			descendants: [{ foldId: 'fold-inner', label: 'Inner chamber' }],
+			provider: 'lattice-fold.builtin-inspection@1.0.0',
+			topologyRevision: 2,
+			relationType: 'partOf',
+			parent: node,
+			ancestors: [node],
+			siblings: [],
+			children: [],
+			descendants: [],
+			completeness: { ancestors: complete(1), siblings: complete(0), children: complete(0), descendants: complete(0) },
 			truncated: false,
+			grantsAuthority: false,
 		});
+	});
+
+	it('keeps a missing member listed with its state', async () => {
+		const { relay } = tools({
+			inspectContext: (request) => {
+				const envelope = inspectedEnvelope(request.foldFacets);
+				const manifest = envelope.current.fold.facets.find((f: any) => f.facetId === FACET_MANIFEST);
+				manifest.payload.members[0].state = 'missing';
+				return envelope;
+			},
+		});
+		const members = (await relay.orient()).currentFold!.members;
+		expect(members.items.map((member) => [member.role, member.state])).toEqual([['charter', 'missing'], ['hub', 'present']]);
+	});
+
+	it('carries Lattice truncation through, per collection', async () => {
+		const { relay } = tools({
+			inspectContext: (request) => {
+				const envelope = inspectedEnvelope(request.foldFacets);
+				const facet = clone(DECLARED_TOPOLOGY) as any;
+				facet.payload.descendants = { items: [clone(facet.payload.parent)], returned: 1, total: 40, complete: false, truncated: true, truncation: { reason: 'item-limit', limit: 1 } };
+				envelope.current.fold.facets = envelope.current.fold.facets.map((f: any) => (f.facetId === FACET_TOPOLOGY ? facet : f));
+				return envelope;
+			},
+		});
+		const topology = (await relay.orient()).currentFold!.topology;
+		expect(topology).toMatchObject({ status: 'declared', truncated: true, completeness: { descendants: { returned: 1, total: 40, complete: false, truncated: true, truncation: { reason: 'item-limit', limit: 1 } }, children: { complete: true } } });
 	});
 
 	it('honours includeMembers/includeTopology opt-outs by not requesting those facets', async () => {
@@ -387,6 +428,8 @@ describe('authority, redaction and bounds', () => {
 	});
 });
 
+const published = () => clone(DECLARED_TOPOLOGY.payload) as Record<string, unknown>;
+
 describe('topology is declared, never inferred', () => {
 	it('reports no relationships for Folds whose folders nest inside each other', async () => {
 		// The current Fold's only folder sits inside another Fold's folder, and its hub links to that Fold's hub.
@@ -410,10 +453,12 @@ describe('topology is declared, never inferred', () => {
 	});
 
 	it.each([
-		['an unknown spec', { spec: 'lattice-fold-topology/v2' }],
-		['missing relationship lists', { spec: 'lattice-fold-topology/v1', parent: null }],
-		['a malformed parent', { spec: 'lattice-fold-topology/v1', parent: 'Projects', ancestors: [], siblings: [], children: [], descendants: [] }],
-		['refs without foldId', { spec: 'lattice-fold-topology/v1', parent: null, ancestors: [{ path: 'Projects' }], siblings: [], children: [], descendants: [] }],
+		['an unknown spec', { ...published(), spec: 'lattice-fold-topology/v2' }],
+		['missing relationship collections', { ...published(), descendants: undefined }],
+		['bare lists instead of completeness envelopes', { ...published(), children: [] }],
+		['a malformed parent', { ...published(), parent: 'Projects' }],
+		['nodes without foldId', { ...published(), siblings: { items: [{ path: 'Projects' }], returned: 1, complete: true, truncated: false, truncation: null } }],
+		['grantsAuthority other than false', { ...published(), grantsAuthority: true }],
 	])('treats a topology facet with %s as unsupported, not as data', async (_label, payload) => {
 		const { relay } = tools({
 			inspectFold: (request) => {
