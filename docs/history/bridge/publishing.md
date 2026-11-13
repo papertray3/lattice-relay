@@ -213,7 +213,7 @@ Replace these in all files:
 # On GitHub: Create new repository "obsidian-mcp-bridge"
 
 # In your local repo:
-cd C:\Users\sthat\Source\Repos\obsidian-mcp-bridge
+cd C:\Users\<user>\Source\Repos\obsidian-mcp-bridge
 git remote add origin https://github.com/papertray3/obsidian-mcp-bridge.git
 git branch -M main
 git push -u origin main

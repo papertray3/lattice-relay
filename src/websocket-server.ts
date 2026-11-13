@@ -1,4 +1,4 @@
-import type MCPBridgePlugin from './main';
+import type LatticeRelayPlugin from './main';
 import { SimpleWebSocketServer, SimpleWebSocket } from './simple-websocket';
 import { logger } from './logger';
 
@@ -19,9 +19,9 @@ export class MCPWebSocketServer {
 	private httpServer: any = null;
 	private wsServer: SimpleWebSocketServer | null = null;
 	private clients: Set<SimpleWebSocket> = new Set();
-	private plugin: MCPBridgePlugin;
+	private plugin: LatticeRelayPlugin;
 
-	constructor(plugin: MCPBridgePlugin) {
+	constructor(plugin: LatticeRelayPlugin) {
 		this.plugin = plugin;
 	}
 

@@ -7,7 +7,7 @@ Relay projects two read-only Lattice capabilities over MCP:
 | `lattice_orient` | *Where am I working?* | `api.focus.inspectContext` (Focus API 1.1), plus `api.fold.listFolds` for selectable Folds |
 | `lattice_fold_describe` | *What is this Fold?* | `api.fold.inspectFold` (Fold API 1.0) only |
 
-Both are registered as builtin tools in `mcp-bridge/defaults/tools.defaults.yaml` and implemented in `src/lattice/`.
+Both are registered as builtin tools in `defaults/tools.defaults.yaml` and implemented in `src/lattice/`.
 
 ## The authority rule
 

@@ -11,6 +11,9 @@ import { loadUserHandler } from './registry/handler-loader';
 import { writeMcpConfig } from './registry/mcp-config-writer';
 import { ToolFileWatcher } from './registry/file-watcher';
 
+/** Vault-relative directory holding user tools Relay creates (`<dir>/tools`). Survives plugin updates. */
+export const VAULT_CONFIG_DIR = path.join('.obsidian', 'lattice-relay');
+
 export type { ToolDefinition, ToolsConfig, HandlerContext, HandlerResult, UserHandlerModule, ProgrammaticToolDefinition };
 
 export interface ToolRegistryStats {
@@ -67,14 +70,14 @@ export class ToolRegistry {
 		this.toolSearchPaths = toolSearchPaths;
 
 		// Plugin defaults (read-only, shipped with plugin)
-		this.defaultsPath = path.join(pluginDir, 'mcp-bridge', 'defaults', 'tools.defaults.yaml');
+		this.defaultsPath = path.join(pluginDir, 'defaults', 'tools.defaults.yaml');
 
 		// Vault-level user config (preserved across updates)
-		this.vaultConfigDir = path.join(this.vaultBasePath, '.obsidian', 'mcp-bridge');
+		this.vaultConfigDir = path.join(this.vaultBasePath, VAULT_CONFIG_DIR);
 		this.userToolsDir = path.join(this.vaultConfigDir, 'tools');
 
 		// Generated output (in plugin directory)
-		this.generatedPath = path.join(pluginDir, 'mcp-bridge', 'generated');
+		this.generatedPath = path.join(pluginDir, 'generated');
 	}
 
 	/**
@@ -166,7 +169,7 @@ export class ToolRegistry {
 			logger.info(`Tool registry loaded - ${this.getStats().total} total tools`);
 		} catch (error) {
 			logger.error('Failed to load configuration:', error);
-			new Notice('MCP Bridge: Failed to load tool configuration - see console for details', 5000);
+			new Notice('Lattice Relay: Failed to load tool configuration - see console for details', 5000);
 			throw error;
 		}
 	}
@@ -228,7 +231,7 @@ export class ToolRegistry {
 			// would be silently wiped out by every reload. See applyProgrammaticTools().
 			this.applyProgrammaticTools();
 			const stats = this.getStats();
-			if (notify) new Notice('MCP Bridge: Tool registry reloaded');
+			if (notify) new Notice('Lattice Relay: Tool registry reloaded');
 			logger.info('Tool registry reloaded successfully');
 			return stats;
 		} catch (error) {
@@ -237,7 +240,7 @@ export class ToolRegistry {
 			this.handlers = previousHandlers;
 			this.cachedAllTools = previousCache;
 			logger.error('Failed to reload:', error);
-			if (notify) new Notice('MCP Bridge: Failed to reload - see console for details', 5000);
+			if (notify) new Notice('Lattice Relay: Failed to reload - see console for details', 5000);
 			throw error;
 		}
 	}
@@ -434,7 +437,7 @@ export class ToolRegistry {
 
 	/**
 	 * Register a tool programmatically, entirely in-memory - no YAML file, no
-	 * handler script on disk. This is what MCPBridgePlugin.api.registerTool()
+	 * handler script on disk. This is what LatticeRelayPlugin.api.registerTool()
 	 * (see main.ts) exposes to other Obsidian plugins, so they can add MCP
 	 * tools from their own onload() instead of dropping files into a configured
 	 * tool search path.

@@ -1,135 +1,16 @@
 import { App, PluginSettingTab, Setting, Notice, Modal, TextComponent, TextAreaComponent } from 'obsidian';
-import type MCPBridgePlugin from './main';
+import type LatticeRelayPlugin from './main';
 import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as yaml from 'js-yaml';
 import { logger, LogLevel } from './logger';
+import { API_KEY_PLACEHOLDER, CLIENT_AGENTS, ClientConfigParams, ENV_KEY, serverNameForVault, serverScriptPath } from './client-config';
+import { VAULT_CONFIG_DIR } from './tool-registry';
 
-const API_KEY_PLACEHOLDER = '<copy your key here>';
 
-/** Slugifies a vault name into the underscore-separated form used in generated server names. */
-function vaultSlug(name: string): string {
-	return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-}
-
-interface ClientConfigParams {
-	serverName: string;
-	/** OS-native path (backslashes on Windows) - for formats that don't need JSON escaping, e.g. TOML literal strings. */
-	mainJsPath: string;
-	/** Forward-slash path - safe to drop into a JSON string without escaping. */
-	mainJsPathForward: string;
-	apiKey: string;
-	port: number;
-}
-
-interface ClientAgentDef {
-	id: string;
-	label: string;
-	/** A caveat shown above the config when the format/location isn't fully verified against current vendor docs. */
-	note?: string;
-	getConfigPath: (homeDir: string, vaultBasePath: string) => string;
-	renderConfig: (params: ClientConfigParams) => string;
-}
-
-function jsonMcpServers(params: ClientConfigParams): string {
-	return JSON.stringify({
-		mcpServers: {
-			[params.serverName]: {
-				command: 'node',
-				args: [params.mainJsPathForward],
-				env: {
-					OBSIDIAN_MCP_KEY: params.apiKey,
-					OBSIDIAN_PORT: String(params.port)
-				}
-			}
-		}
-	}, null, 2);
-}
-
-const CLIENT_AGENTS: ClientAgentDef[] = [
-	{
-		id: 'claude-code',
-		label: 'Claude Code',
-		getConfigPath: (_home, vaultBasePath) => path.join(vaultBasePath, '.mcp.json'),
-		renderConfig: jsonMcpServers
-	},
-	{
-		id: 'codex',
-		label: 'Codex',
-		getConfigPath: (home) => path.join(home, '.codex', 'config.toml'),
-		renderConfig: ({ serverName, mainJsPath, apiKey, port }) =>
-			`[mcp_servers.${serverName}]\n` +
-			`command = "node"\n` +
-			`args = [\n` +
-			`  '${mainJsPath}',\n` +
-			`]\n` +
-			`env = { OBSIDIAN_MCP_KEY = "${apiKey}", OBSIDIAN_PORT = "${port}" }`
-	},
-	{
-		id: 'gemini-cli',
-		label: 'Gemini CLI',
-		getConfigPath: (home) => path.join(home, '.gemini', 'settings.json'),
-		renderConfig: jsonMcpServers
-	},
-	{
-		id: 'mistral-vibe',
-		label: 'Mistral Vibe',
-		note: '⚠️ Config location/format for Mistral Vibe could not be verified - this follows the common MCP JSON convention as a starting point. Check its docs to confirm.',
-		getConfigPath: (home) => path.join(home, '.vibe', 'config.json'),
-		renderConfig: jsonMcpServers
-	},
-	{
-		id: 'opencode',
-		label: 'OpenCode',
-		note: '⚠️ OpenCode also supports a project-level opencode.json in your vault root - check its docs to confirm which your version uses.',
-		getConfigPath: (home) => path.join(home, '.config', 'opencode', 'opencode.json'),
-		renderConfig: ({ serverName, mainJsPathForward, apiKey, port }) =>
-			JSON.stringify({
-				mcp: {
-					[serverName]: {
-						type: 'local',
-						command: ['node', mainJsPathForward],
-						environment: {
-							OBSIDIAN_MCP_KEY: apiKey,
-							OBSIDIAN_PORT: String(port)
-						}
-					}
-				}
-			}, null, 2)
-	},
-	{
-		id: 'kiro',
-		label: 'Kiro',
-		note: 'Kiro also supports a global config at ~/.kiro/settings/mcp.json - use that instead if you want this available across all workspaces.',
-		getConfigPath: (_home, vaultBasePath) => path.join(vaultBasePath, '.kiro', 'settings', 'mcp.json'),
-		renderConfig: ({ serverName, mainJsPathForward, apiKey, port }) =>
-			JSON.stringify({
-				mcpServers: {
-					[serverName]: {
-						command: 'node',
-						args: [mainJsPathForward],
-						env: {
-							OBSIDIAN_MCP_KEY: apiKey,
-							OBSIDIAN_PORT: String(port)
-						},
-						disabled: false,
-						autoApprove: []
-					}
-				}
-			}, null, 2)
-	},
-	{
-		id: 'hermes-agent',
-		label: 'Hermes Agent',
-		note: '⚠️ Hermes Agent\'s config format/location could not be verified - this is a best-effort guess based on common MCP client conventions. Check its docs to confirm.',
-		getConfigPath: (home) => path.join(home, '.hermes', 'config.json'),
-		renderConfig: jsonMcpServers
-	}
-];
-
-export interface MCPBridgeSettings {
+export interface RelaySettings {
 	// Connection settings
 	host: string;
 	port: number;
@@ -161,7 +42,7 @@ export interface MCPBridgeSettings {
 	logLevel: LogLevel;
 }
 
-export const DEFAULT_SETTINGS: MCPBridgeSettings = {
+export const DEFAULT_SETTINGS: RelaySettings = {
 	host: '127.0.0.1',
 	port: 27125,
 	enableRemote: false,
@@ -172,17 +53,17 @@ export const DEFAULT_SETTINGS: MCPBridgeSettings = {
 	keyPath: '',
 	allowedOrigins: [],
 	digitalGardenRepoPath: '',
-	cacheDirPath: '.obsidian/cache/mcp-bridge-render',
+	cacheDirPath: '.obsidian/cache/lattice-relay-render',
 	cacheMaxSizeMB: 100,
-	toolSearchPaths: ['.obsidian/mcp-bridge/tools'],
+	toolSearchPaths: ['.obsidian/lattice-relay/tools'],
 	logLevel: 'info',
 };
 
-export class MCPBridgeSettingsTab extends PluginSettingTab {
-	plugin: MCPBridgePlugin;
+export class RelaySettingsTab extends PluginSettingTab {
+	plugin: LatticeRelayPlugin;
 	activeClientTab: string = CLIENT_AGENTS[0].id;
 
-	constructor(app: App, plugin: MCPBridgePlugin) {
+	constructor(app: App, plugin: LatticeRelayPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -192,7 +73,7 @@ export class MCPBridgeSettingsTab extends PluginSettingTab {
 		const scrollTop = containerEl.scrollTop;
 		containerEl.empty();
 
-		containerEl.createEl('h2', { text: 'MCP Bridge Settings' });
+		containerEl.createEl('h2', { text: 'Lattice Relay Settings' });
 
 		// === Connection Settings ===
 		containerEl.createEl('h3', { text: 'Connection Settings' });
@@ -267,7 +148,7 @@ export class MCPBridgeSettingsTab extends PluginSettingTab {
 					html = html.replace(/(<input type="text" id="host" value=")[^"]*(")/, `$1${this.plugin.settings.host}$2`);
 					html = html.replace(/(<input type="number" id="port" value=")[^"]*(")/, `$1${this.plugin.settings.port}$2`);
 
-					const tempHarnessPath = path.join(os.tmpdir(), 'obsidian-mcp-bridge-test-harness.html');
+					const tempHarnessPath = path.join(os.tmpdir(), 'lattice-relay-test-harness.html');
 					fs.writeFileSync(tempHarnessPath, html);
 
 					try {
@@ -391,7 +272,7 @@ export class MCPBridgeSettingsTab extends PluginSettingTab {
 			<ul>
 				<li>Host: 127.0.0.1</li>
 				<li>Enable Remote: OFF</li>
-				<li>Copy API key and set OBSIDIAN_MCP_KEY environment variable</li>
+				<li>Copy API key and set ${ENV_KEY} environment variable</li>
 			</ul>
 
 			<p><strong>Remote Access (future):</strong></p>
@@ -420,7 +301,7 @@ export class MCPBridgeSettingsTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Log level')
-			.setDesc('Controls how much detail MCP Bridge writes to the developer console. Use Debug when troubleshooting.')
+			.setDesc('Controls how much detail Lattice Relay writes to the developer console. Use Debug when troubleshooting.')
 			.addDropdown(dropdown => dropdown
 				.addOption('debug', 'Debug')
 				.addOption('info', 'Info')
@@ -497,7 +378,7 @@ export class MCPBridgeSettingsTab extends PluginSettingTab {
 					// Update search paths in registry and reload
 					await this.plugin.toolRegistry.updateSearchPaths(this.plugin.settings.toolSearchPaths);
 					const stats = this.plugin.toolRegistry.getStats();
-					new Notice(`MCP Bridge: Reloaded ${stats.total} tools (${stats.builtin} builtin, ${stats.user} user)`);
+					new Notice(`Lattice Relay: Reloaded ${stats.total} tools (${stats.builtin} builtin, ${stats.user} user)`);
 					this.display(); // Refresh to show new tools
 				}));
 
@@ -506,8 +387,7 @@ export class MCPBridgeSettingsTab extends PluginSettingTab {
 
 		const userToolsDir = path.join(
 			(this.app.vault.adapter as any).basePath,
-			'.obsidian',
-			'mcp-bridge',
+			VAULT_CONFIG_DIR,
 			'tools'
 		);
 
@@ -615,9 +495,9 @@ export class MCPBridgeSettingsTab extends PluginSettingTab {
 	private renderClientConfigSection(containerEl: HTMLElement): void {
 		const vaultBasePath = (this.app.vault.adapter as any).basePath;
 		const homeDir = os.homedir();
-		const mainJsPath = path.join(vaultBasePath, '.obsidian', 'plugins', this.plugin.manifest.id, 'servers', 'node', 'dist', 'main.js');
+		const mainJsPath = serverScriptPath(vaultBasePath, this.plugin.manifest.id);
 		const mainJsPathForward = mainJsPath.split(path.sep).join('/');
-		const serverName = `obsidian_mcp_${vaultSlug(this.app.vault.getName())}`;
+		const serverName = serverNameForVault(this.app.vault.getName());
 
 		// Tab bar
 		const tabBar = containerEl.createDiv({ cls: 'mcp-client-tabs' });
@@ -751,12 +631,12 @@ export class MCPBridgeSettingsTab extends PluginSettingTab {
  * Modal for adding/editing custom tools
  */
 class ToolEditorModal extends Modal {
-	plugin: MCPBridgePlugin;
+	plugin: LatticeRelayPlugin;
 	filename: string | null;
 	onSave: () => void;
 	toolData: any;
 
-	constructor(app: App, plugin: MCPBridgePlugin, filename: string | null, onSave: () => void) {
+	constructor(app: App, plugin: LatticeRelayPlugin, filename: string | null, onSave: () => void) {
 		super(app);
 		this.plugin = plugin;
 		this.filename = filename;
@@ -785,8 +665,7 @@ class ToolEditorModal extends Modal {
 		// Load existing tool
 		const userToolsDir = path.join(
 			(this.app.vault.adapter as any).basePath,
-			'.obsidian',
-			'mcp-bridge',
+			VAULT_CONFIG_DIR,
 			'tools'
 		);
 		const filePath = path.join(userToolsDir, this.filename);
@@ -928,8 +807,7 @@ class ToolEditorModal extends Modal {
 
 		const userToolsDir = path.join(
 			(this.app.vault.adapter as any).basePath,
-			'.obsidian',
-			'mcp-bridge',
+			VAULT_CONFIG_DIR,
 			'tools'
 		);
 

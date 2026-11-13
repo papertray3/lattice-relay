@@ -1,218 +1,42 @@
-# Contributing to Obsidian MCP Bridge
+# Contributing to Lattice Relay
 
-Thank you for your interest in contributing! This document provides guidelines for contributing to the project.
-
-## Development Setup
-
-### Prerequisites
-- Node.js 16+ (for building the plugin)
-- Python 3.9+ (for the MCP server)
-- Obsidian (for testing)
-- Git
-
-### Getting Started
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/papertray3/obsidian-mcp-bridge.git
-   cd obsidian-mcp-bridge
-   ```
-
-2. **Set up the plugin:**
-   ```bash
-   cd plugin
-   npm install
-   npm run dev  # Watch mode for development
-   ```
-
-3. **Set up the MCP server:**
-   ```bash
-   cd mcp-server
-   pip install -r requirements.txt
-   ```
-
-4. **Install in Obsidian:**
-   - Symlink or copy `plugin/` to your vault's `.obsidian/plugins/obsidian-mcp-bridge/`
-   - Enable the plugin in Obsidian
-
-## Project Structure
+## Layout
 
 ```
-obsidian-mcp-bridge/
-├── plugin/                    # Obsidian plugin (TypeScript)
-│   ├── src/
-│   │   ├── main.ts           # Plugin entry point
-│   │   ├── settings.ts       # Settings UI
-│   │   ├── websocket-server.ts
-│   │   ├── simple-websocket.ts  # Custom WebSocket implementation
-│   │   └── handlers/         # Request handlers
-│   ├── manifest.json
-│   └── package.json
-├── mcp-server/               # Python MCP server
-│   ├── obsidian_mcp_server.py
-│   ├── requirements.txt
-│   └── README.md
-├── docs/                     # Documentation
-│   └── setup.md
-└── README.md
+src/                     Obsidian plugin (TypeScript): WebSocket server, tool registry, settings, Lattice projection
+  lattice/               read-only Lattice context tools and vendored contract fixtures
+  release/               release identity and migration contract tests
+defaults/                built-in tool definitions shipped with the plugin
+servers/node/            the stdio MCP server (TypeScript, own lockfile), bundled into server/lattice-relay.mjs
+scripts/                 version, bundling, smoke, release assembly, Bridge migration (temporary)
+docs/                    current documentation; docs/history/ holds superseded Bridge-era material
 ```
 
-## How to Contribute
+Relay supports one server: `servers/node`. Python and other Bridge-era servers are retired and kept only in Git history.
 
-### Reporting Bugs
+## Setup
 
-1. Check if the bug has already been reported in [Issues](https://github.com/papertray3/obsidian-mcp-bridge/issues)
-2. If not, create a new issue with:
-   - Clear description of the problem
-   - Steps to reproduce
-   - Expected vs actual behavior
-   - Obsidian version
-   - Plugin version
-   - Console logs (if applicable)
+Node 20 or later.
 
-### Suggesting Features
+```
+npm ci
+npm run server:install
+npm run verify
+```
 
-1. Open an issue with the `enhancement` label
-2. Describe the feature and use case
-3. Explain why it would be valuable
-4. Consider implementation approach (optional)
+`npm run verify` runs the version/identity check, plugin tests, the plugin build, server typecheck, lint and tests, and the server bundle. CI runs the same gates plus audits, release assembly, and the smoke test.
 
-### Pull Requests
+For a live check, install into a sandbox vault. Use `npm run release:assemble -- --allow-dirty` and copy `release/lattice-relay-<version>/lattice-relay/` into the vault's plugins folder. Never test against a vault you can't reset.
 
-1. **Fork the repository**
+## Rules
 
-2. **Create a feature branch:**
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
+- **Lattice owns semantics.** Relay projects Lattice's public, versioned APIs and never reaches into private plugin state. Contract fixtures in `src/lattice/fixtures/` are vendored byte-for-byte with provenance.
+- **Context is not consent.** No read-only tool may change notes, Focus, Fold state, or authority.
+- **stdout is the MCP channel.** The server must write nothing but JSON-RPC to stdout. Diagnostics go to stderr or the log.
+- **No secrets in the repository.** No keys, `.env`, `data.json`, client configs, or machine paths. A contract test enforces this.
+- **One identity.** The retired Bridge identity may appear only in history, migration tooling, and the tests that prove its retirement (`src/release/identity.test.ts`).
+- **Dependencies:** don't run `npm audit fix --force`. Review each change against the contract and smoke tests.
 
-3. **Make your changes:**
-   - Follow existing code style
-   - Add comments for complex logic
-   - Update documentation if needed
-   - Test your changes thoroughly
+## Pull requests
 
-4. **Commit with clear messages:**
-   ```bash
-   git commit -m "Add feature: brief description"
-   ```
-
-5. **Push and create PR:**
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-
-## Coding Standards
-
-### TypeScript (Plugin)
-
-- Use TypeScript strict mode
-- Add type annotations for public APIs
-- Use async/await for asynchronous operations
-- Follow existing naming conventions:
-  - Classes: `PascalCase`
-  - Functions/methods: `camelCase`
-  - Constants: `UPPER_SNAKE_CASE`
-
-### Python (MCP Server)
-
-- Follow PEP 8 style guide
-- Use type hints for function signatures
-- Add docstrings for public functions
-- Use async/await for MCP operations
-
-### Documentation
-
-- Update README.md for user-facing changes
-- Update CHANGELOG.md following Keep a Changelog format
-- Add inline comments for complex logic
-- Update docs/ for setup/usage changes
-
-## Testing
-
-### Plugin Testing
-
-1. Build the plugin:
-   ```bash
-   cd plugin
-   npm run build
-   ```
-
-2. Test in Obsidian:
-   - Enable plugin
-   - Check console for errors
-   - Test WebSocket connection
-   - Verify functionality
-
-### MCP Server Testing
-
-1. Run connection test:
-   ```bash
-   python test_connection.py
-   ```
-
-2. Test with AI client (Claude Code, Codex)
-
-## Adding New Tools
-
-To add a new MCP tool:
-
-1. **Add handler in plugin** (`plugin/src/handlers/`):
-   ```typescript
-   export async function myNewTool(plugin: MCPBridgePlugin, params: any): Promise<any> {
-       // Implementation
-   }
-   ```
-
-2. **Register in main.ts:**
-   ```typescript
-   case 'my_new_tool':
-       return await myNewTool(this, params.myParam);
-   ```
-
-3. **Add to Python MCP server:**
-   ```python
-   @app.tool()
-   async def my_new_tool(myParam: str) -> str:
-       return await call_plugin("my_new_tool", {"myParam": myParam})
-   ```
-
-4. **Update documentation:**
-   - Add to README.md features list
-   - Document in mcp-server/README.md
-   - Add example usage
-
-## Release Process
-
-1. Update version in:
-   - `plugin/manifest.json`
-   - `plugin/package.json`
-   - `CHANGELOG.md`
-
-2. Build plugin:
-   ```bash
-   cd plugin
-   npm run build
-   ```
-
-3. Create GitHub release with:
-   - Tag: `v0.x.0`
-   - Release notes from CHANGELOG.md
-   - Attach `main.js` and `manifest.json`
-
-4. Submit to Obsidian Community Plugins (when ready)
-
-## Communication
-
-- GitHub Issues for bugs and features
-- Discussions for questions and ideas
-- Be respectful and constructive
-- Follow Obsidian community guidelines
-
-## License
-
-By contributing, you agree that your contributions will be licensed under the MIT License.
-
-## Questions?
-
-Feel free to open an issue with the `question` label or start a discussion!
+Keep changes focused, include tests, update `CHANGELOG.md` under `[Unreleased]`, and make sure `npm run verify` passes. See [Releasing](releasing.md) for versions and release candidates.

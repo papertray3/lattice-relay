@@ -9,7 +9,7 @@
  * in code under test - e.g. builtin-tools.ts - resolve correctly; build
  * fixtures with `createTestFile()` from src/test/helpers.ts, not `new
  * TFile()` directly - see that file for why), and `Plugin` (so `main.ts`'s
- * `class MCPBridgePlugin extends Plugin` has something real to extend when
+ * `class LatticeRelayPlugin extends Plugin` has something real to extend when
  * the module is imported under vitest - its base-class methods are no-ops;
  * integration tests construct instances via `Object.create(...prototype)`
  * rather than `new`, so Plugin's constructor is never actually invoked).

@@ -1,10 +1,10 @@
-# MCP Bridge Test Harness
+# Lattice Relay Test Harness
 
 **HTML-based tool testing interface with automatic tool discovery**
 
 ## Overview
 
-The test harness provides a web-based interface for testing MCP Bridge tools without needing to configure an MCP server or AI assistant. It automatically discovers available tools from the WebSocket server and generates test forms based on tool schemas.
+The test harness provides a web-based interface for testing Lattice Relay tools without needing to configure an MCP server or AI assistant. It automatically discovers available tools from the WebSocket server and generates test forms based on tool schemas.
 
 ## Features
 
@@ -17,9 +17,9 @@ The test harness provides a web-based interface for testing MCP Bridge tools wit
 
 ## Usage
 
-### 1. Start Obsidian with MCP Bridge Plugin
+### 1. Start Obsidian with Lattice Relay Plugin
 
-Ensure the MCP Bridge plugin is installed and running in Obsidian.
+Ensure the Lattice Relay plugin is installed and running in Obsidian.
 
 ### 2. Open Test Harness
 
@@ -52,7 +52,7 @@ start test-harness.html
 ### Connection Screen
 ```
 ┌─────────────────────────────────────────────────┐
-│ MCP Bridge Test Harness     [Disconnected]     │
+│ Lattice Relay Test Harness     [Disconnected]     │
 │                                                 │
 │ Host: [127.0.0.1]  Port: [27125]               │
 │ API Key: [•••••••••••••]  [Connect]            │
@@ -197,7 +197,7 @@ Can receive broadcast notifications from the vault (displayed in console).
 
 **Solutions:**
 1. Check Obsidian is running
-2. Check MCP Bridge plugin is enabled
+2. Check Lattice Relay plugin is enabled
 3. Verify host and port settings match plugin settings
 4. Check API key is correct (copy from plugin settings)
 5. Check firewall isn't blocking localhost connections
@@ -316,11 +316,7 @@ Every request requires a valid API key. The test harness cannot bypass plugin au
 
 ## Related Documentation
 
-- [EXTENSIBILITY.md](EXTENSIBILITY.md) - Tool registry architecture
-- [../README.md](../README.md) - MCP Bridge overview
-- [MCP Protocol Primer](../docs/Cleanup%20and%20Improvements/MCP-Protocol-Primer.md)
+- [Extensibility](../architecture/extensibility.md) - Tool registry architecture
+- [README](../../README.md) - Lattice Relay overview
 
 ---
-
-**Version:** 2.0.1
-**Updated:** 2025-01-22

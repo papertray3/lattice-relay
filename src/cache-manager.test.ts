@@ -24,7 +24,7 @@ describe('RenderedContentCacheManager', () => {
 	let fakeVault: Vault;
 
 	beforeEach(() => {
-		vaultBasePath = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-bridge-cachevault-'));
+		vaultBasePath = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-relay-cachevault-'));
 		settings = {
 			cacheDir: path.join(vaultBasePath, '.cache'),
 			vaultBasePath,

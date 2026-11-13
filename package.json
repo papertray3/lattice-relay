@@ -1,7 +1,8 @@
 {
   "name": "lattice-relay",
   "version": "0.1.0",
-  "description": "Governed MCP projection of Lattice context and operations",
+  "private": true,
+  "description": "Lattice Relay: the governed MCP boundary between Lattice and agent clients (Obsidian plugin and stdio server)",
   "main": "main.js",
   "repository": {
     "type": "git",
@@ -16,18 +17,26 @@
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
     "test": "vitest run",
     "test:watch": "vitest",
-    "version": "node version-bump.mjs && git add manifest.json versions.json"
+    "server:install": "npm ci --prefix servers/node",
+    "server:check": "npm --prefix servers/node run typecheck && npm --prefix servers/node run lint && npm --prefix servers/node test",
+    "server:bundle": "node scripts/build-server.mjs",
+    "version:check": "node scripts/version.mjs --check",
+    "version:set": "node scripts/version.mjs",
+    "release:assemble": "node scripts/assemble-release.mjs",
+    "verify": "npm run version:check && npm test && npm run build && npm run server:check && npm run server:bundle"
   },
   "keywords": [
+    "lattice",
     "obsidian",
     "obsidian-plugin",
     "mcp",
-    "model-context-protocol",
-    "ai",
-    "dataview"
+    "model-context-protocol"
   ],
   "author": "papertray3",
   "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^26.4.0",

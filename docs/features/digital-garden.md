@@ -7,10 +7,10 @@ The `render_note_dg_compiled` MCP tool leverages the Digital Garden plugin's com
 
 ## Prerequisites
 - Digital Garden plugin must be installed and enabled
-- Obsidian MCP Bridge plugin running
+- Lattice Relay plugin running
 - MCP server configured in your AI client
 
-**Note:** The MCP Bridge will automatically initialize the Digital Garden compiler on first use. You may see the Publication Center modal open and close briefly - this is normal and only happens once per Obsidian session.
+**Note:** The Lattice Relay will automatically initialize the Digital Garden compiler on first use. You may see the Publication Center modal open and close briefly - this is normal and only happens once per Obsidian session.
 
 ## Important: dg-publish Not Required
 
@@ -23,7 +23,7 @@ Unlike Digital Garden's normal publishing workflow, `render_note_dg_compiled` by
 - ✅ You can render private notes that shouldn't go to your public garden
 - ✅ The `dg-publish` flag only matters for actual GitHub publishing, not rendering
 
-**Why?** The MCP bridge is for **reading/previewing** your vault, not publishing it. You should be able to render any note for local use.
+**Why?** The Lattice Relay is for **reading/previewing** your vault, not publishing it. You should be able to render any note for local use.
 
 ## Basic Usage
 
@@ -91,17 +91,17 @@ Cache key is based on: `hash(filepath + mtime + size)`
 
 **View cache stats:**
 1. Open Obsidian Settings
-2. Go to MCP Bridge plugin settings
+2. Go to Lattice Relay plugin settings
 3. Scroll to "Cache Settings" section
 4. View statistics: entries count, total size, limit
 
 **Clear cache manually:**
-1. Open MCP Bridge plugin settings
+1. Open Lattice Relay plugin settings
 2. Click "Clear Cache" button in Cache Settings
 3. All cached files deleted
 
 **Adjust cache size:**
-1. Open MCP Bridge plugin settings
+1. Open Lattice Relay plugin settings
 2. Update "Cache Size Limit" (default: 100 MB)
 3. Save settings
 4. LRU eviction happens automatically when limit reached
@@ -109,10 +109,10 @@ Cache key is based on: `hash(filepath + mtime + size)`
 ## Configuration
 
 ### Cache Directory
-**Default:** `.obsidian/cache/mcp-bridge-render`
+**Default:** `.obsidian/cache/lattice-relay-render`
 
 **To change:**
-1. Open MCP Bridge plugin settings
+1. Open Lattice Relay plugin settings
 2. Update "Cache Directory" field
 3. Use path relative to vault root
 4. Restart plugin to apply
@@ -121,7 +121,7 @@ Cache key is based on: `hash(filepath + mtime + size)`
 **Default:** 100 MB
 
 **To change:**
-1. Open MCP Bridge plugin settings
+1. Open Lattice Relay plugin settings
 2. Update "Cache Size Limit" field
 3. Enter size in MB
 4. Changes apply immediately
@@ -142,9 +142,9 @@ Cache key is based on: `hash(filepath + mtime + size)`
 1. Install Digital Garden plugin from Community Plugins
 2. Enable it in Settings → Community Plugins
 3. Configure Digital Garden settings (repo URL, etc.)
-4. The MCP Bridge will automatically initialize the compiler on first use
+4. The Lattice Relay will automatically initialize the compiler on first use
 
-**Note:** If you see this error, the auto-initialization failed. The Digital Garden plugin must be enabled for the MCP Bridge to initialize it.
+**Note:** If you see this error, the auto-initialization failed. The Digital Garden plugin must be enabled for the Lattice Relay to initialize it.
 
 ### File Not Found
 **Error:**
@@ -188,7 +188,7 @@ For each dashboard note, call render_note_dg_compiled to warm the cache
 
 ### Monitoring Cache Performance
 ```
-Get cache stats from MCP Bridge settings
+Get cache stats from Lattice Relay settings
 - If cache hit rate is low, consider increasing size limit
 - If cache size is maxed out, consider clearing old entries
 ```
@@ -242,21 +242,19 @@ Read the HTML from the cached file
 What are the current cache statistics?
 ```
 
-Check MCP Bridge settings → Cache Settings section
+Check Lattice Relay settings → Cache Settings section
 
 ### Example 3: Clear Cache
 ```
 The cache is getting too large, please clear it
 ```
 
-Open MCP Bridge settings → Click "Clear Cache" button
+Open Lattice Relay settings → Click "Clear Cache" button
 
 ## Troubleshooting
 
-See TEST-DG-COMPILED-RENDER.md for detailed troubleshooting guide.
+See the Bridge-era [compiled render test notes](../history/bridge/dg-compiled-test.md) for detailed troubleshooting.
 
 ## Related Documentation
-- `DG-Compiled-Render-Plan.md` - Implementation plan
-- `TEST-DG-COMPILED-RENDER.md` - Testing guide
-- `README.md` - Main documentation
+- [README](../../README.md) - Main documentation
 - Digital Garden plugin documentation

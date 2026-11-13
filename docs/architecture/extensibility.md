@@ -1,9 +1,8 @@
-# MCP Bridge Extensibility Architecture
+# Lattice Relay Extensibility Architecture
 
-**Version:** 2.0.0-minimal
 **Status:** Phase 1 (YAML + Script Registry)
 
-This document describes how to extend the MCP Bridge plugin with custom tools without modifying the plugin code.
+This document describes how to extend the Lattice Relay plugin with custom tools without modifying the plugin code.
 
 ---
 
@@ -25,7 +24,7 @@ This document describes how to extend the MCP Bridge plugin with custom tools wi
 
 ## Overview
 
-The MCP Bridge plugin uses a **YAML-driven tool registry** as the single source of truth for all available tools. This allows users to:
+The Lattice Relay plugin uses a **YAML-driven tool registry** as the single source of truth for all available tools. This allows users to:
 
 - ✅ Add custom tools without modifying plugin code
 - ✅ Write handler scripts in JavaScript
@@ -46,7 +45,7 @@ The MCP Bridge plugin uses a **YAML-driven tool registry** as the single source 
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    MCP Bridge Plugin                     │
+│                    Lattice Relay Plugin                     │
 │  ┌────────────────────────────────────────────────────┐ │
 │  │          Tool Registry (tools.yaml)                │ │
 │  │  • Reads YAML at startup                           │ │
@@ -84,9 +83,9 @@ The MCP Bridge plugin uses a **YAML-driven tool registry** as the single source 
 
 ## File Structure
 
-Built-in tools are defined in the plugin's own `mcp-bridge/defaults/tools.defaults.yaml` and implemented in plugin code (`handler: builtin`) - you never touch these directly.
+Built-in tools are defined in the plugin's own `defaults/tools.defaults.yaml` and implemented in plugin code (`handler: builtin`) - you never touch these directly.
 
-User tools are discovered by scanning every directory listed in the plugin's **tool search paths** setting (configurable in Obsidian Settings → MCP Bridge → Tool Discovery) for `.yaml`/`.yml` files, one tool definition per file. Each search path directory is independent and can live anywhere - inside the vault, inside another plugin's folder, wherever is convenient:
+User tools are discovered by scanning every directory listed in the plugin's **tool search paths** setting (configurable in Obsidian Settings → Lattice Relay → Tool Discovery) for `.yaml`/`.yml` files, one tool definition per file. Each search path directory is independent and can live anywhere - inside the vault, inside another plugin's folder, wherever is convenient:
 
 ```
 <a configured tool search path>/
@@ -96,13 +95,13 @@ User tools are discovered by scanning every directory listed in the plugin's **t
 └── another_tool.js
 ```
 
-Tools added via the "Custom Tools" section of plugin settings are written to `.obsidian/mcp-bridge/tools/` in the vault - which only becomes a real search path if it's also listed under Tool Discovery (it is by default).
+Tools added via the "Custom Tools" section of plugin settings are written to `.obsidian/lattice-relay/tools/` in the vault - which only becomes a real search path if it's also listed under Tool Discovery (it is by default).
 
 **Key locations:**
 
-- **`mcp-bridge/defaults/tools.defaults.yaml`** (plugin dir) - built-in tool definitions, shipped with the plugin
+- **`defaults/tools.defaults.yaml`** (plugin dir) - built-in tool definitions, shipped with the plugin
 - **Configured tool search paths** - where user tool `.yaml` + handler `.js` pairs live (see below)
-- **`mcp-bridge/generated/mcp-config.json`** (plugin dir) - auto-generated MCP server config; don't edit manually
+- **`generated/mcp-config.json`** (plugin dir) - auto-generated MCP server config; don't edit manually
 
 ---
 
@@ -377,20 +376,20 @@ module.exports = {
 
 ### Step-by-Step Guide
 
-This uses the default tool search path, `.obsidian/mcp-bridge/tools/` in your vault (see Obsidian Settings → MCP Bridge → Tool Discovery for the full list of configured search paths - you can add your own).
+This uses the default tool search path, `.obsidian/lattice-relay/tools/` in your vault (see Obsidian Settings → Lattice Relay → Tool Discovery for the full list of configured search paths - you can add your own).
 
 **1. Create the tool's YAML definition and its handler script, side by side:**
 
 ```bash
-mkdir -p .obsidian/mcp-bridge/tools
-touch .obsidian/mcp-bridge/tools/my_tool.yaml
-touch .obsidian/mcp-bridge/tools/my_tool.js
+mkdir -p .obsidian/lattice-relay/tools
+touch .obsidian/lattice-relay/tools/my_tool.yaml
+touch .obsidian/lattice-relay/tools/my_tool.js
 ```
 
 **2. Write the YAML definition** (one tool per file - this is a standalone YAML document, not an entry appended to a shared list):
 
 ```yaml
-# .obsidian/mcp-bridge/tools/my_tool.yaml
+# .obsidian/lattice-relay/tools/my_tool.yaml
 name: my_tool
 description: Counts all markdown files in vault
 handler: my_tool.js   # relative to this file's own directory - see Handler Path Resolution
@@ -402,7 +401,7 @@ inputSchema:
 **3. Write the handler**, in the same directory as its YAML:
 
 ```javascript
-// .obsidian/mcp-bridge/tools/my_tool.js
+// .obsidian/lattice-relay/tools/my_tool.js
 
 module.exports = {
   async execute(params, context) {
@@ -421,12 +420,12 @@ module.exports = {
 **4. Reload the plugin:**
 
 - If `auto_reload: true` in config, changes are detected automatically
-- Otherwise, run command: "MCP Bridge: Reload Tool Registry"
+- Otherwise, run command: "Lattice Relay: Reload Tool Registry"
 - Or restart Obsidian
 
 **5. Test your tool:**
 
-The tool is now available to any MCP server connected to the bridge!
+The tool is now available to any MCP server connected to Relay!
 
 ---
 
@@ -501,7 +500,7 @@ Given the above, these aren't optional hardening tips - they're the only protect
 4. **Test with a non-critical vault first** - before pointing a new handler at data you care about
 5. **Prefer the provided Obsidian APIs** (`context.vault`, `context.app`, etc.) over reaching for `fs`/`child_process` directly - not because it's enforced, but because it keeps your handler's blast radius small and its behavior predictable
 
-If real sandboxing (a VM, a worker thread with a restricted API surface, or similar) gets implemented in a future phase, this section will be updated to describe the actual enforced boundary - see the [phased refactoring notes](../development/eval-20260831.md) for where that sits in the roadmap.
+If real sandboxing (a VM, a worker thread with a restricted API surface, or similar) gets implemented in a future phase, this section will be updated to describe the actual enforced boundary - see the [phased refactoring notes](../history/bridge/eval-20260831.md) for where that sits in the roadmap.
 
 ---
 
@@ -798,8 +797,8 @@ This will be implemented in a future update. For now, you can create similar too
 1. Check YAML syntax: `npx js-yaml tools.yaml`
 2. Verify handler path is correct
 3. Check Obsidian console for errors
-4. Reload plugin: "MCP Bridge: Reload Tool Registry"
-5. Check generated config: `.obsidian/plugins/mcp-bridge/generated/mcp-config.json`
+4. Reload plugin: "Lattice Relay: Reload Tool Registry"
+5. Check generated config: `.obsidian/plugins/lattice-relay/generated/mcp-config.json`
 
 ### Handler script errors
 
@@ -813,7 +812,7 @@ This will be implemented in a future update. For now, you can create similar too
 
 1. Verify `auto_reload: true` in tools.yaml config
 2. Check file watcher is active (console logs)
-3. Manually reload: "MCP Bridge: Reload Tool Registry"
+3. Manually reload: "Lattice Relay: Reload Tool Registry"
 4. Restart Obsidian if issues persist
 
 ### "Module not found" errors
@@ -834,12 +833,10 @@ Have a useful handler you want to share? Consider:
 
 ## Related Documentation
 
-- [MCP Protocol Primer](../docs/Cleanup%20and%20Improvements/MCP-Protocol-Primer.md)
-- [Dynamic Tool Registry Implementation](../docs/Cleanup%20and%20Improvements/Dynamic-Tool-Registry-Implementation.md)
-- [Communication Options Analysis](../docs/Cleanup%20and%20Improvements/Communication-Options-Analysis.md)
+- [Tool YAML format](../guides/tool-yaml-format.md)
+- [Install and configure](../guides/install.md)
+- [Bridge-era design history](../history/bridge/README.md)
 
 ---
 
-**Version History:**
-
-- v2.0.0-minimal (2025-01-21): Initial extensibility architecture documentation
+**History:** first written for the MCP Bridge lineage (2025-01-21); paths and names updated for Lattice Relay 0.1.0.

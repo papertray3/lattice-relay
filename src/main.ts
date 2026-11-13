@@ -1,6 +1,6 @@
 import { Plugin, Notice } from 'obsidian';
 import { randomUUID } from 'crypto';
-import { MCPBridgeSettings, DEFAULT_SETTINGS, MCPBridgeSettingsTab } from './settings';
+import { RelaySettings, DEFAULT_SETTINGS, RelaySettingsTab } from './settings';
 import { MCPWebSocketServer, MCPRequest } from './websocket-server';
 import { ToolRegistry } from './tool-registry';
 import * as path from 'path';
@@ -13,13 +13,13 @@ import { logger } from './logger';
 import type { ProgrammaticToolDefinition, UserHandlerModule } from './registry/types';
 
 /**
- * Public surface exposed to other Obsidian plugins as `MCPBridgePlugin.api`
+ * Public surface exposed to other Obsidian plugins as `LatticeRelayPlugin.api`
  * (see onload() below) - the programmatic alternative to dropping a YAML+JS
  * file pair into a configured tool search path. A calling plugin registers
  * from its own onload() and is expected to clean up in onunload(), typically
  * via `this.register(() => bridgeApi.unregisterTool('my_tool'))`.
  */
-export interface MCPBridgeApi {
+export interface RelayApi {
 	registerTool(
 		definition: ProgrammaticToolDefinition,
 		handler: UserHandlerModule,
@@ -28,14 +28,14 @@ export interface MCPBridgeApi {
 	unregisterTool(name: string): boolean;
 }
 
-export default class MCPBridgePlugin extends Plugin {
-	settings: MCPBridgeSettings;
+export default class LatticeRelayPlugin extends Plugin {
+	settings: RelaySettings;
 	server: MCPWebSocketServer;
 	toolRegistry: ToolRegistry;
 	cacheManager: RenderedContentCacheManager;
 	metadataExtractor: MetadataExtractor;
 	builtinTools: BuiltinTools;
-	api: MCPBridgeApi;
+	api: RelayApi;
 
 	async onload() {
 		await this.loadSettings();
@@ -65,7 +65,7 @@ export default class MCPBridgePlugin extends Plugin {
 			await this.saveSettings();
 
 			new Notice(
-				'MCP Bridge: API key generated. Copy it from settings to configure MCP server.',
+				'Lattice Relay: API key generated. Copy it from settings to configure MCP server.',
 				10000
 			);
 		}
@@ -77,7 +77,7 @@ export default class MCPBridgePlugin extends Plugin {
 		// Expose the programmatic registration API to other plugins as soon as
 		// toolRegistry exists - registerTool() works even before initialize()
 		// finishes (see ToolRegistry.applyProgrammaticTools()), so another
-		// plugin's onload() can call this.app.plugins.plugins['obsidian-mcp-bridge'].api
+		// plugin's onload() can call this.app.plugins.plugins['lattice-relay'].api
 		// without needing to wait on our own initialization order.
 		this.api = {
 			registerTool: (definition, handler, options) =>
@@ -91,7 +91,7 @@ export default class MCPBridgePlugin extends Plugin {
 			logger.info(`Tool registry initialized (${stats.total} tools: ${stats.builtin} builtin, ${stats.user} user)`);
 		} catch (error) {
 			logger.error('Failed to initialize tool registry:', error);
-			new Notice('MCP Bridge: Failed to initialize tool registry - see console', 5000);
+			new Notice('Lattice Relay: Failed to initialize tool registry - see console', 5000);
 		}
 
 		// Initialize WebSocket server
@@ -100,21 +100,21 @@ export default class MCPBridgePlugin extends Plugin {
 		// Start server
 		try {
 			this.server.start();
-			new Notice(`MCP Bridge: Server started on ${this.settings.host}:${this.settings.port}`);
+			new Notice(`Lattice Relay: Server started on ${this.settings.host}:${this.settings.port}`);
 			logger.info(`Server started on ${this.settings.host}:${this.settings.port}`);
 		} catch (error) {
 			logger.error('Failed to start server:', error);
-			new Notice('MCP Bridge: Failed to start server. Check console for details.', 5000);
+			new Notice('Lattice Relay: Failed to start server. Check console for details.', 5000);
 		}
 
 		// Add settings tab
-		this.addSettingTab(new MCPBridgeSettingsTab(this.app, this));
+		this.addSettingTab(new RelaySettingsTab(this.app, this));
 
 		// Add status bar item
 		const statusBarItem = this.addStatusBarItem();
 		const stats = this.toolRegistry.getStats();
-		statusBarItem.setText(`MCP Bridge: ${stats.total} tools`);
-		statusBarItem.addClass('mcp-bridge-status');
+		statusBarItem.setText(`Lattice Relay: ${stats.total} tools`);
+		statusBarItem.addClass('lattice-relay-status');
 
 		// Add command to copy API key
 		this.addCommand({
@@ -122,7 +122,7 @@ export default class MCPBridgePlugin extends Plugin {
 			name: 'Copy API Key',
 			callback: () => {
 				navigator.clipboard.writeText(this.settings.apiKey);
-				new Notice('MCP Bridge: API key copied to clipboard');
+				new Notice('Lattice Relay: API key copied to clipboard');
 			}
 		});
 
@@ -133,7 +133,7 @@ export default class MCPBridgePlugin extends Plugin {
 			callback: () => {
 				this.server.stop();
 				this.server.start();
-				new Notice('MCP Bridge: Server restarted');
+				new Notice('Lattice Relay: Server restarted');
 			}
 		});
 
@@ -144,7 +144,7 @@ export default class MCPBridgePlugin extends Plugin {
 			callback: async () => {
 				try {
 					const stats = await this.toolRegistry.reload();
-					statusBarItem.setText(`MCP Bridge: ${stats.total} tools`);
+					statusBarItem.setText(`Lattice Relay: ${stats.total} tools`);
 				} catch {
 					// ToolRegistry already records the diagnostic and shows the failure notice.
 				}

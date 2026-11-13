@@ -3,20 +3,19 @@
 /main.js.map
 *.js.map
 
-# Generated MCP config
-/mcp-bridge/generated/
+# Generated MCP config (written by the plugin at runtime)
+/generated/
+
+# Build and release outputs
+/build/
+/release/
 
 # Dependencies
 /node_modules/
 
 # Servers
-/servers/python/__pycache__/
-/servers/python/*.pyc
 /servers/node/dist/
 /servers/node/node_modules/
-
-# Orchestrator
-/orchestrator/node_modules/
 
 # IDE
 .vscode/

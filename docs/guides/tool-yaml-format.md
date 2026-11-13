@@ -2,7 +2,7 @@
 
 ## Overview
 
-Custom tools for the MCP Bridge are defined in YAML files located in `.obsidian/mcp-bridge/tools/`. Each tool is defined in a separate `.yaml` file that specifies its name, description, handler, and input/output schemas.
+Custom tools for the Lattice Relay are defined in YAML files located in `.obsidian/lattice-relay/tools/`. Each tool is defined in a separate `.yaml` file that specifies its name, description, handler, and input/output schemas.
 
 ---
 
@@ -647,12 +647,12 @@ inputSchema:
 
 Custom tool YAML files must be placed in:
 ```
-.obsidian/mcp-bridge/tools/
+.obsidian/lattice-relay/tools/
 ```
 
 Each tool should be in its own file, named after the tool:
 ```
-.obsidian/mcp-bridge/tools/
+.obsidian/lattice-relay/tools/
 ├── my_tool.yaml
 ├── another_tool.yaml
 └── kants_project_manager.yaml

@@ -1,5 +1,5 @@
 import { TFile } from 'obsidian';
-import type MCPBridgePlugin from '../main';
+import type LatticeRelayPlugin from '../main';
 import { DataviewHelper, DataviewExecutionResult } from '../dataview-helper';
 
 /**
@@ -15,12 +15,12 @@ export interface RunDataviewBlockParams {
 /**
  * Execute a Dataview or DataviewJS block
  *
- * @param plugin - The MCP Bridge plugin instance
+ * @param plugin - The Lattice Relay plugin instance
  * @param params - Execution parameters
  * @returns Execution result with rendered content
  */
 export async function runDataviewBlock(
-	plugin: MCPBridgePlugin,
+	plugin: LatticeRelayPlugin,
 	params: RunDataviewBlockParams
 ): Promise<DataviewExecutionResult> {
 	const { filepath, flavor, source, input } = params;
@@ -73,12 +73,12 @@ export async function runDataviewBlock(
 /**
  * Extract Dataview blocks from a note
  *
- * @param plugin - The MCP Bridge plugin instance
+ * @param plugin - The Lattice Relay plugin instance
  * @param filepath - Path to the note file
  * @returns List of Dataview blocks found in the note
  */
 export async function extractDataviewBlocks(
-	plugin: MCPBridgePlugin,
+	plugin: LatticeRelayPlugin,
 	filepath: string
 ): Promise<{
 	success: boolean;

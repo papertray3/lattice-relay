@@ -9,7 +9,7 @@ tools:
   # Built-in tools (part of plugin core)
   builtin:
     - name: ping
-      description: Test connectivity to the MCP Bridge
+      description: Test connectivity to Lattice Relay
       handler: builtin
       inputSchema:
         type: object

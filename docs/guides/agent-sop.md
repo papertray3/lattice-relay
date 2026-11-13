@@ -2,13 +2,13 @@
 
 ## Overview
 
-This document defines best practices for AI agents working with Obsidian vaults through the MCP Bridge. Following these procedures ensures efficient, accurate, and vault-native operations.
+This document defines best practices for AI agents working with Obsidian vaults through the Lattice Relay. Following these procedures ensures efficient, accurate, and vault-native operations.
 
 ---
 
 ## The Vault-Native First Protocol
 
-**Golden Rule**: Always use MCP Bridge tools instead of shell commands for vault operations.
+**Golden Rule**: Always use Lattice Relay tools instead of shell commands for vault operations.
 
 ### Why Vault-Native?
 

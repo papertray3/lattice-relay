@@ -19,7 +19,7 @@ export class Logger {
 	private level: LogLevel;
 	private prefix: string;
 
-	constructor(level: LogLevel = 'info', prefix: string = 'MCP Bridge') {
+	constructor(level: LogLevel = 'info', prefix: string = 'Lattice Relay') {
 		this.level = level;
 		this.prefix = prefix;
 	}
@@ -68,4 +68,4 @@ export class Logger {
 }
 
 // Export singleton instance
-export const logger = new Logger('info', 'MCP Bridge');
+export const logger = new Logger('info', 'Lattice Relay');

@@ -292,7 +292,7 @@ export class DataviewHelper {
 
 	/**
 	 * Expand dv.view() calls by inlining the view file's code
-	 * This allows custom views to work through the MCP bridge
+	 * This allows custom views to work through Lattice Relay
 	 */
 	private async expandDvViewCalls(script: string, providedInput?: any): Promise<string> {
 		// Match dv.view("path", {params}) or await dv.view("path", {params})

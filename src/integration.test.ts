@@ -4,7 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { App } from 'obsidian';
-import MCPBridgePlugin from './main';
+import LatticeRelayPlugin from './main';
 import { ToolRegistry } from './tool-registry';
 import { BuiltinTools } from './builtin-tools';
 import { MCPWebSocketServer } from './websocket-server';
@@ -14,7 +14,7 @@ import { createTestFile } from './test/helpers';
 /**
  * Exercises the real request/response pipeline end to end: a raw WebSocket
  * message comes in, MCPWebSocketServer authenticates and dispatches it to
- * MCPBridgePlugin.handleRequest(), which routes to a real ToolRegistry (for
+ * LatticeRelayPlugin.handleRequest(), which routes to a real ToolRegistry (for
  * user tools, loaded via the actual require()-based handler loader) or a
  * real BuiltinTools instance, and the response is asserted at the wire level.
  *
@@ -67,13 +67,13 @@ const DEFAULTS_YAML = {
 describe('End-to-end request/response flow', () => {
 	let pluginDir: string;
 	let vaultBasePath: string;
-	let plugin: MCPBridgePlugin;
+	let plugin: LatticeRelayPlugin;
 	let server: MCPWebSocketServer;
 
 	beforeEach(async () => {
-		pluginDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-bridge-plugin-'));
-		vaultBasePath = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-bridge-vault-'));
-		writeYaml(path.join(pluginDir, 'mcp-bridge', 'defaults', 'tools.defaults.yaml'), DEFAULTS_YAML);
+		pluginDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-relay-plugin-'));
+		vaultBasePath = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-relay-vault-'));
+		writeYaml(path.join(pluginDir, 'defaults', 'tools.defaults.yaml'), DEFAULTS_YAML);
 
 		// A real user tool: YAML + handler script, co-located (see registry/handler-loader.ts).
 		const searchDir = path.join(vaultBasePath, 'tools');
@@ -111,7 +111,7 @@ describe('End-to-end request/response flow', () => {
 			resolveWikiLinks: vi.fn(),
 		} as any;
 
-		plugin = new MCPBridgePlugin(fakeApp, {} as any);
+		plugin = new LatticeRelayPlugin(fakeApp, {} as any);
 		plugin.toolRegistry = toolRegistry;
 		plugin.builtinTools = new BuiltinTools(fakeApp, fakeMetadataExtractor);
 		(plugin as any).settings = { requireAuth: true, apiKey: 'secret-key' };
@@ -260,7 +260,7 @@ describe('End-to-end request/response flow', () => {
 
 	describe('plugin.api (programmatic tool registration)', () => {
 		// This is the surface another Obsidian plugin (e.g. lattice-foundry) calls
-		// from its own onload()/onunload() - see MCPBridgeApi in main.ts. No YAML
+		// from its own onload()/onunload() - see RelayApi in main.ts. No YAML
 		// file, no JS file on disk; the handler is an in-memory function that's
 		// dispatched through the exact same WebSocket -> handleRequest ->
 		// ToolRegistry.executeTool() path as a file-based user tool.

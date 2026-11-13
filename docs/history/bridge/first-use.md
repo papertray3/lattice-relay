@@ -132,7 +132,7 @@ Claude will:
 **Check:**
 1. Did you fully restart Claude Code?
 2. Is the config file path correct?
-   - Windows: `C:\Users\sthat\AppData\Roaming\Claude\claude_desktop_config.json`
+   - Windows: `C:\Users\<user>\AppData\Roaming\Claude\claude_desktop_config.json`
 3. Is Python in your PATH? Test: `python --version`
 
 **Fix:**

@@ -3,7 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from 'obsidian';
-import MCPBridgePlugin from '../main';
+import LatticeRelayPlugin from '../main';
 import { ToolRegistry } from '../tool-registry';
 import { BuiltinTools } from '../builtin-tools';
 import { MCPWebSocketServer } from '../websocket-server';
@@ -18,7 +18,7 @@ import { fakeLattice } from './test-support';
  * results (successful responses carrying an outcome).
  */
 
-const SHIPPED_DEFAULTS = path.resolve(__dirname, '..', '..', 'mcp-bridge', 'defaults', 'tools.defaults.yaml');
+const SHIPPED_DEFAULTS = path.resolve(__dirname, '..', '..', 'defaults', 'tools.defaults.yaml');
 
 function makeFakeSocket(): SimpleWebSocket & { sent: string[] } {
 	const sent: string[] = [];
@@ -28,15 +28,15 @@ function makeFakeSocket(): SimpleWebSocket & { sent: string[] } {
 describe('Lattice tools through the Relay request pipeline', () => {
 	let pluginDir: string;
 	let vaultBasePath: string;
-	let plugin: MCPBridgePlugin;
+	let plugin: LatticeRelayPlugin;
 	let server: MCPWebSocketServer;
 	let plugins: Record<string, unknown>;
 
 	beforeEach(async () => {
 		pluginDir = fs.mkdtempSync(path.join(os.tmpdir(), 'relay-plugin-'));
 		vaultBasePath = fs.mkdtempSync(path.join(os.tmpdir(), 'relay-vault-'));
-		fs.mkdirSync(path.join(pluginDir, 'mcp-bridge', 'defaults'), { recursive: true });
-		fs.copyFileSync(SHIPPED_DEFAULTS, path.join(pluginDir, 'mcp-bridge', 'defaults', 'tools.defaults.yaml'));
+		fs.mkdirSync(path.join(pluginDir, 'defaults'), { recursive: true });
+		fs.copyFileSync(SHIPPED_DEFAULTS, path.join(pluginDir, 'defaults', 'tools.defaults.yaml'));
 
 		plugins = {};
 		const app = {
@@ -49,7 +49,7 @@ describe('Lattice tools through the Relay request pipeline', () => {
 
 		const registry = new ToolRegistry(app, pluginDir, []);
 		await registry.initialize();
-		plugin = new MCPBridgePlugin(app, {} as any);
+		plugin = new LatticeRelayPlugin(app, {} as any);
 		plugin.toolRegistry = registry;
 		plugin.builtinTools = new BuiltinTools(app, {} as any);
 		(plugin as any).settings = { requireAuth: true, apiKey: 'k' };

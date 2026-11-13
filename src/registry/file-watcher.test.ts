@@ -26,7 +26,7 @@ describe('ToolFileWatcher', () => {
 	});
 
 	it('triggers onChange when a watched .yaml file is added', async () => {
-		dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-bridge-watch-'));
+		dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-relay-watch-'));
 		watcher = new ToolFileWatcher(50);
 
 		let calls = 0;
@@ -40,7 +40,7 @@ describe('ToolFileWatcher', () => {
 	});
 
 	it('ignores changes to files with unrelated extensions', async () => {
-		dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-bridge-watch-'));
+		dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-relay-watch-'));
 		watcher = new ToolFileWatcher(50);
 
 		let calls = 0;
@@ -59,7 +59,7 @@ describe('ToolFileWatcher', () => {
 	});
 
 	it('debounces a burst of rapid changes into a single reload', async () => {
-		dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-bridge-watch-'));
+		dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-relay-watch-'));
 		watcher = new ToolFileWatcher(150);
 
 		let calls = 0;
@@ -79,7 +79,7 @@ describe('ToolFileWatcher', () => {
 	});
 
 	it('stops watching after stop()', async () => {
-		dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-bridge-watch-'));
+		dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-relay-watch-'));
 		watcher = new ToolFileWatcher(50);
 
 		let calls = 0;

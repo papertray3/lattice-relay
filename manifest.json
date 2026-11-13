@@ -1,10 +1,10 @@
 {
-  "id": "obsidian-mcp-bridge",
-  "name": "MCP Bridge",
-  "version": "2.0.0",
+  "id": "lattice-relay",
+  "name": "Lattice Relay",
+  "version": "0.1.0",
   "minAppVersion": "1.4.0",
-  "description": "Extensible WebSocket server for Model Context Protocol integration. Add custom tools via YAML and JavaScript handlers.",
+  "description": "Governed MCP boundary for Lattice: exposes vault tools and read-only Lattice context to MCP clients over an authenticated local WebSocket.",
   "author": "papertray3",
-  "authorUrl": "https://github.com/papertray3/obsidian-mcp-bridge",
+  "authorUrl": "https://github.com/papertray3/lattice-relay",
   "isDesktopOnly": true
 }

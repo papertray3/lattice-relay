@@ -65,9 +65,9 @@ describe('ToolRegistry', () => {
 	let vaultBasePath: string;
 
 	beforeEach(() => {
-		pluginDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-bridge-plugin-'));
-		vaultBasePath = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-bridge-vault-'));
-		writeYaml(path.join(pluginDir, 'mcp-bridge', 'defaults', 'tools.defaults.yaml'), DEFAULTS_YAML);
+		pluginDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-relay-plugin-'));
+		vaultBasePath = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-relay-vault-'));
+		writeYaml(path.join(pluginDir, 'defaults', 'tools.defaults.yaml'), DEFAULTS_YAML);
 	});
 
 	afterEach(() => {
@@ -92,8 +92,8 @@ describe('ToolRegistry', () => {
 			const registry = new ToolRegistry(makeFakeApp(vaultBasePath), pluginDir, []);
 			await registry.initialize();
 
-			expect(fs.existsSync(path.join(vaultBasePath, '.obsidian', 'mcp-bridge'))).toBe(true);
-			expect(fs.existsSync(path.join(vaultBasePath, '.obsidian', 'mcp-bridge', 'tools'))).toBe(true);
+			expect(fs.existsSync(path.join(vaultBasePath, '.obsidian', 'lattice-relay'))).toBe(true);
+			expect(fs.existsSync(path.join(vaultBasePath, '.obsidian', 'lattice-relay', 'tools'))).toBe(true);
 		});
 
 		it('is idempotent - a second call is a no-op', async () => {
@@ -105,7 +105,7 @@ describe('ToolRegistry', () => {
 		});
 
 		it('throws if plugin defaults are missing', async () => {
-			fs.rmSync(path.join(pluginDir, 'mcp-bridge', 'defaults', 'tools.defaults.yaml'));
+			fs.rmSync(path.join(pluginDir, 'defaults', 'tools.defaults.yaml'));
 			const registry = new ToolRegistry(makeFakeApp(vaultBasePath), pluginDir, []);
 
 			await expect(registry.initialize()).rejects.toThrow('Plugin defaults not found');
@@ -194,11 +194,11 @@ describe('ToolRegistry', () => {
 	});
 
 	describe('addTool', () => {
-		// addTool() always writes into `.obsidian/mcp-bridge/tools` (userToolsDir), but
+		// addTool() always writes into `.obsidian/lattice-relay/tools` (userToolsDir), but
 		// discovery only rediscovers tools from `toolSearchPaths` - they're only the same
 		// tools by convention (DEFAULT_SETTINGS.toolSearchPaths includes this path), so the
 		// registry must be configured with that search path for a written tool to reappear.
-		const userToolsSearchPath = ['.obsidian/mcp-bridge/tools'];
+		const userToolsSearchPath = ['.obsidian/lattice-relay/tools'];
 
 		it('writes a new tool definition and makes it available after reload', async () => {
 			const registry = new ToolRegistry(makeFakeApp(vaultBasePath), pluginDir, userToolsSearchPath);
@@ -214,7 +214,7 @@ describe('ToolRegistry', () => {
 
 			expect(registry.getTool('new_tool')).toBeDefined();
 			const written = fs.readFileSync(
-				path.join(vaultBasePath, '.obsidian', 'mcp-bridge', 'tools', 'new_tool.yaml'),
+				path.join(vaultBasePath, '.obsidian', 'lattice-relay', 'tools', 'new_tool.yaml'),
 				'utf8'
 			);
 			expect(written).toContain('name: new_tool');
@@ -239,7 +239,7 @@ describe('ToolRegistry', () => {
 	describe('registerTool / unregisterTool', () => {
 		// Programmatic registration - the in-memory counterpart to addTool()/file
 		// discovery, used by other Obsidian plugins from their own onload() (see
-		// MCPBridgePlugin.api in main.ts). No YAML file, no JS file on disk.
+		// LatticeRelayPlugin.api in main.ts). No YAML file, no JS file on disk.
 		function makeHandler(result: Record<string, unknown>) {
 			return { execute: async () => result };
 		}
@@ -394,7 +394,7 @@ describe('ToolRegistry', () => {
 			fs.writeFileSync(path.join(searchDir, 'late_tool.js'), 'module.exports = { async execute() { return { ok: true }; } };');
 
 			const stats = await registry.reload({ notify: false });
-			const generated = JSON.parse(fs.readFileSync(path.join(pluginDir, 'mcp-bridge', 'generated', 'mcp-config.json'), 'utf8'));
+			const generated = JSON.parse(fs.readFileSync(path.join(pluginDir, 'generated', 'mcp-config.json'), 'utf8'));
 
 			expect(stats).toEqual({ total: 3, builtin: 2, user: 1, auto: 0 });
 			expect(generated.tools.map((tool: ToolDefinition) => tool.name)).toContain('late_tool');
@@ -406,7 +406,7 @@ describe('ToolRegistry', () => {
 			await registry.initialize();
 			expect(registry.getTool('ping')).toBeDefined();
 
-			fs.rmSync(path.join(pluginDir, 'mcp-bridge', 'defaults', 'tools.defaults.yaml'));
+			fs.rmSync(path.join(pluginDir, 'defaults', 'tools.defaults.yaml'));
 
 			await expect(registry.reload({ notify: false })).rejects.toThrow('Plugin defaults not found');
 			expect(registry.getTool('ping')).toBeDefined();
@@ -414,7 +414,7 @@ describe('ToolRegistry', () => {
 		});
 
 		it('automatically reloads changes from a configured external search path', async () => {
-			writeYaml(path.join(pluginDir, 'mcp-bridge', 'defaults', 'tools.defaults.yaml'), {
+			writeYaml(path.join(pluginDir, 'defaults', 'tools.defaults.yaml'), {
 				...DEFAULTS_YAML,
 				config: { ...DEFAULTS_YAML.config, auto_reload: true },
 			});
@@ -541,7 +541,7 @@ describe('ToolRegistry', () => {
 
 		it('loads a handler referenced by an absolute path', async () => {
 			const searchDir = path.join(vaultBasePath, 'custom-tools');
-			const handlerDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-bridge-handler-'));
+			const handlerDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lattice-relay-handler-'));
 			const absoluteHandlerPath = path.join(handlerDir, 'abs_handler.js');
 			fs.writeFileSync(absoluteHandlerPath, `module.exports = { async execute() { return { fromAbsolute: true }; } };`);
 
@@ -572,9 +572,9 @@ describe('ToolRegistry', () => {
 				inputSchema: { type: 'object', properties: {} },
 			});
 			// Plant a same-named file elsewhere that the old candidate list might have found.
-			fs.mkdirSync(path.join(pluginDir, '.mcp-bridge', 'handlers', 'user'), { recursive: true });
+			fs.mkdirSync(path.join(pluginDir, '.lattice-relay', 'handlers', 'user'), { recursive: true });
 			fs.writeFileSync(
-				path.join(pluginDir, '.mcp-bridge', 'handlers', 'user', 'does_not_exist.js'),
+				path.join(pluginDir, '.lattice-relay', 'handlers', 'user', 'does_not_exist.js'),
 				`module.exports = { async execute() { return { wrongFile: true }; } };`
 			);
 
