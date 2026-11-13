@@ -2,10 +2,10 @@
  * Render tools - Digital Garden compiled rendering
  */
 
-import type { ObsidianWebSocketClient } from '../websocket-client.js';
+import type { PluginCaller } from '../plugin-connection.js';
 
 export async function handleRenderNoteDGCompiled(
-  client: ObsidianWebSocketClient,
+  client: PluginCaller,
   args: Record<string, unknown>
 ): Promise<string> {
   const filepath = args.filepath as string;

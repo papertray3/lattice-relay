@@ -1,50 +1,71 @@
 /**
- * Configuration loading from environment variables
+ * Configuration for the Lattice Relay stdio server, read from the environment
+ * the MCP client passes when it launches the server.
+ *
+ * Relay 0.1.0 replaced the Bridge-era `OBSIDIAN_*` variables with
+ * `LATTICE_RELAY_*` and deliberately does not read the old names. If only the
+ * old names are present, `retiredVariables` reports them so the server can
+ * explain the failure instead of silently connecting without a key.
  */
 
-import { config as loadEnv } from 'dotenv';
-import { logger } from './logger.js';
-
-// Load .env file if present
-loadEnv();
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 export interface ServerConfig {
-  obsidianHost: string;
-  obsidianPort: string;
-  obsidianUseSSL: boolean;
-  obsidianApiKey: string;
-  logLevel: 'debug' | 'info' | 'warn' | 'error';
+  host: string;
+  port: string;
+  useSSL: boolean;
+  apiKey: string;
+  logLevel: LogLevel;
 }
 
-export function loadConfig(): ServerConfig {
-  const config: ServerConfig = {
-    obsidianHost: process.env.OBSIDIAN_HOST || 'localhost',
-    obsidianPort: process.env.OBSIDIAN_PORT || '27125',
-    obsidianUseSSL: (process.env.OBSIDIAN_USE_SSL || 'false').toLowerCase() === 'true',
-    obsidianApiKey: process.env.OBSIDIAN_MCP_KEY || '',
-    logLevel: (process.env.LOG_LEVEL as ServerConfig['logLevel']) || 'info'
+export const ENV = {
+  key: 'LATTICE_RELAY_KEY',
+  host: 'LATTICE_RELAY_HOST',
+  port: 'LATTICE_RELAY_PORT',
+  useSSL: 'LATTICE_RELAY_USE_SSL',
+  logLevel: 'LATTICE_RELAY_LOG_LEVEL',
+} as const;
+
+/** Bridge-era names that Relay no longer reads, mapped to their replacements. */
+export const RETIRED_ENV: Readonly<Record<string, string>> = {
+  OBSIDIAN_MCP_KEY: ENV.key,
+  OBSIDIAN_HOST: ENV.host,
+  OBSIDIAN_PORT: ENV.port,
+  OBSIDIAN_USE_SSL: ENV.useSSL,
+  LOG_LEVEL: ENV.logLevel,
+};
+
+export const DEFAULT_HOST = 'localhost';
+export const DEFAULT_PORT = '27125';
+
+const LOG_LEVELS: readonly LogLevel[] = ['debug', 'info', 'warn', 'error'];
+
+export type Env = Readonly<Record<string, string | undefined>>;
+
+export function loadConfig(env: Env = process.env): ServerConfig {
+  const level = (env[ENV.logLevel] ?? 'info').toLowerCase();
+  return {
+    host: env[ENV.host] || DEFAULT_HOST,
+    port: env[ENV.port] || DEFAULT_PORT,
+    useSSL: (env[ENV.useSSL] ?? 'false').toLowerCase() === 'true',
+    apiKey: env[ENV.key] ?? '',
+    logLevel: (LOG_LEVELS as readonly string[]).includes(level) ? (level as LogLevel) : 'info',
   };
+}
 
-  // Validate required config
-  if (!config.obsidianApiKey) {
-    logger.warn('OBSIDIAN_MCP_KEY not set. Authentication may fail.');
-  }
-
-  // Set logger level
-  logger.setLevel(config.logLevel);
-
-  logger.debug('Configuration loaded:', {
-    host: config.obsidianHost,
-    port: config.obsidianPort,
-    useSSL: config.obsidianUseSSL,
-    logLevel: config.logLevel,
-    apiKeySet: !!config.obsidianApiKey
-  });
-
-  return config;
+/**
+ * Retired Bridge variables that are set while their Relay replacement is not.
+ * Returns names only, never values. `LOG_LEVEL` is generic, so it is reported
+ * only alongside another retired name rather than on its own.
+ */
+export function retiredVariables(env: Env = process.env): Array<{ retired: string; replacement: string }> {
+  const found = Object.entries(RETIRED_ENV)
+    .filter(([retired, replacement]) => env[retired] !== undefined && env[replacement] === undefined)
+    .map(([retired, replacement]) => ({ retired, replacement }));
+  return found.some(f => f.retired !== 'LOG_LEVEL') ? found : [];
 }
 
 export function getWebSocketURL(config: ServerConfig): string {
-  const protocol = config.obsidianUseSSL ? 'wss' : 'ws';
-  return `${protocol}://${config.obsidianHost}:${config.obsidianPort}`;
+  const protocol = config.useSSL ? 'wss' : 'ws';
+  return `${protocol}://${config.host}:${config.port}`;
 }

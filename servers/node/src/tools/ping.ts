@@ -2,10 +2,10 @@
  * Ping tool - Connection health check
  */
 
-import type { ObsidianWebSocketClient } from '../websocket-client.js';
+import type { PluginCaller } from '../plugin-connection.js';
 
 export async function handlePing(
-  client: ObsidianWebSocketClient,
+  client: PluginCaller,
   _args: Record<string, unknown>
 ): Promise<string> {
   const result = await client.call('ping', {});

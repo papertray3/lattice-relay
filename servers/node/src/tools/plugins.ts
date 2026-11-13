@@ -2,10 +2,10 @@
  * Plugin tools - List plugins and get plugin info
  */
 
-import type { ObsidianWebSocketClient } from '../websocket-client.js';
+import type { PluginCaller } from '../plugin-connection.js';
 
 export async function handleListPlugins(
-  client: ObsidianWebSocketClient,
+  client: PluginCaller,
   _args: Record<string, unknown>
 ): Promise<string> {
   const result = await client.call('list_plugins', {});
@@ -13,7 +13,7 @@ export async function handleListPlugins(
 }
 
 export async function handleGetPluginInfo(
-  client: ObsidianWebSocketClient,
+  client: PluginCaller,
   args: Record<string, unknown>
 ): Promise<string> {
   const pluginId = (args.plugin_id || args.pluginId) as string;

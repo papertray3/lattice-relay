@@ -23,7 +23,7 @@ class Logger {
   constructor(level: LogLevel = 'info') {
     this.level = level;
     // Write logs to a temp file that can be accessed
-    this.logFile = path.join(os.tmpdir(), 'obsidian-mcp-server.log');
+    this.logFile = path.join(os.tmpdir(), 'lattice-relay-server.log');
     
     try {
       this.logStream = fs.createWriteStream(this.logFile, { flags: 'a' });

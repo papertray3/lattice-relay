@@ -2,10 +2,10 @@
  * Dataview tools - Query execution, block running, block extraction
  */
 
-import type { ObsidianWebSocketClient } from '../websocket-client.js';
+import type { PluginCaller } from '../plugin-connection.js';
 
 export async function handleDataviewQuery(
-  client: ObsidianWebSocketClient,
+  client: PluginCaller,
   args: Record<string, unknown>
 ): Promise<string> {
   const query = args.query as string;
@@ -21,7 +21,7 @@ export async function handleDataviewQuery(
 }
 
 export async function handleRunDataviewBlock(
-  client: ObsidianWebSocketClient,
+  client: PluginCaller,
   args: Record<string, unknown>
 ): Promise<string> {
   const flavor = args.flavor as string;
@@ -45,7 +45,7 @@ export async function handleRunDataviewBlock(
 }
 
 export async function handleExtractDataviewBlocks(
-  client: ObsidianWebSocketClient,
+  client: PluginCaller,
   args: Record<string, unknown>
 ): Promise<string> {
   const filepath = args.filepath as string;

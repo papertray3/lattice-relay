@@ -2,7 +2,7 @@
  * Tool registry and dispatcher
  */
 
-import type { ObsidianWebSocketClient } from '../websocket-client.js';
+import type { PluginCaller } from '../plugin-connection.js';
 
 import { handlePing, pingToolDefinition } from './ping.js';
 import { handleListVaultFiles, handleGetNoteRaw, handleSearchVault, vaultToolDefinitions } from './vault.js';
@@ -10,7 +10,7 @@ import { handleListPlugins, handleGetPluginInfo, pluginToolDefinitions } from '.
 import { handleDataviewQuery, handleRunDataviewBlock, handleExtractDataviewBlocks, dataviewToolDefinitions } from './dataview.js';
 import { handleRenderNoteDGCompiled, renderToolDefinitions } from './render.js';
 
-export type ToolHandler = (client: ObsidianWebSocketClient, args: Record<string, unknown>) => Promise<string>;
+export type ToolHandler = (client: PluginCaller, args: Record<string, unknown>) => Promise<string>;
 
 export const toolHandlers: Record<string, ToolHandler> = {
   'ping': handlePing,

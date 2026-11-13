@@ -2,10 +2,10 @@
  * Vault tools - File listing, raw content, search
  */
 
-import type { ObsidianWebSocketClient } from '../websocket-client.js';
+import type { PluginCaller } from '../plugin-connection.js';
 
 export async function handleListVaultFiles(
-  client: ObsidianWebSocketClient,
+  client: PluginCaller,
   args: Record<string, unknown>
 ): Promise<string> {
   const folder = (args.folder as string) || '';
@@ -14,7 +14,7 @@ export async function handleListVaultFiles(
 }
 
 export async function handleGetNoteRaw(
-  client: ObsidianWebSocketClient,
+  client: PluginCaller,
   args: Record<string, unknown>
 ): Promise<string> {
   const filepath = args.filepath as string;
@@ -26,7 +26,7 @@ export async function handleGetNoteRaw(
 }
 
 export async function handleSearchVault(
-  client: ObsidianWebSocketClient,
+  client: PluginCaller,
   args: Record<string, unknown>
 ): Promise<string> {
   const query = args.query as string;

@@ -1,10 +1,11 @@
 /**
- * WebSocket client adapter for Obsidian MCP Bridge plugin
+ * WebSocket client for the Lattice Relay Obsidian plugin.
  */
 
 import WebSocket from 'ws';
 import { logger } from './logger.js';
 import type { ServerConfig } from './config.js';
+import type { PluginConnection } from './plugin-connection.js';
 
 export interface PluginRequest {
   auth: string;
@@ -19,7 +20,7 @@ export interface PluginResponse {
   id?: string;
 }
 
-export class ObsidianWebSocketClient {
+export class ObsidianWebSocketClient implements PluginConnection {
   private ws: WebSocket | null = null;
   private config: ServerConfig;
   private wsUrl: string;
@@ -39,16 +40,16 @@ export class ObsidianWebSocketClient {
 
   async connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      logger.info(`Connecting to Obsidian MCP Bridge at ${this.wsUrl}`);
+      logger.info(`Connecting to Lattice Relay plugin at ${this.wsUrl}`);
 
       try {
         this.ws = new WebSocket(this.wsUrl, {
           // TODO: SSL context for remote connections (Phase 5+)
-          // rejectUnauthorized: config.obsidianUseSSL
+          // rejectUnauthorized: config.useSSL
         });
 
         this.ws.on('open', () => {
-          logger.info('Connected to Obsidian MCP Bridge');
+          logger.info('Connected to Lattice Relay plugin');
           this.reconnectAttempts = 0;
           resolve();
         });
@@ -138,7 +139,7 @@ export class ObsidianWebSocketClient {
     const requestId = `${method}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
     const request: PluginRequest = {
-      auth: this.config.obsidianApiKey,
+      auth: this.config.apiKey,
       method,
       params,
       id: requestId

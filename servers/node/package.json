@@ -1,37 +1,38 @@
 {
-  "name": "obsidian-mcp-server-node",
-  "version": "1.0.0",
-  "description": "Node/TypeScript MCP server for Obsidian Direct API Bridge",
+  "name": "lattice-relay-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lattice Relay stdio MCP server: forwards MCP tool calls to the Lattice Relay Obsidian plugin",
   "type": "module",
   "main": "dist/main.js",
   "bin": {
-    "obsidian-mcp": "dist/main.js"
+    "lattice-relay": "dist/main.js"
   },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "vitest",
-    "test:once": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
-    "clean": "rimraf dist",
-    "package": "npm run build && npm run package:binaries",
-    "package:binaries": "echo 'Binary packaging with pkg/nexe - TBD in Workstream 4'"
+    "clean": "rimraf dist"
   },
   "keywords": [
+    "lattice",
     "obsidian",
-    "mcp",
-    "ai",
-    "claude",
-    "gemini",
-    "codex"
+    "mcp"
   ],
-  "author": "",
+  "author": "papertray3",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/papertray3/lattice-relay.git",
+    "directory": "servers/node"
+  },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^0.5.0",
-    "ws": "^8.18.0",
-    "dotenv": "^16.4.5"
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "ws": "^8.23.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.19",
@@ -45,5 +46,8 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "overrides": {
+    "zod": "^4.6.7"
   }
 }
