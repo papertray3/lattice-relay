@@ -79,13 +79,8 @@ tools:
             type: string
             description: Path to note relative to vault root
         required: [filepath]
-      outputSchema:
-        type: object
-        properties:
-          filepath:
-            type: string
-          content:
-            type: string
+      # Returns the raw markdown as text. No outputSchema: MCP clients require
+      # structuredContent from any tool that declares one.
 
     - name: get_note_metadata
       description: Get structured metadata for a note - frontmatter, tags, links, backlinks, headings, stats. Returns parsed JSON, no manual parsing needed. Use with get_note_raw() for complete note understanding.

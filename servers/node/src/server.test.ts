@@ -91,7 +91,11 @@ describe('Relay MCP server', () => {
     const result = await client.callTool({ name: 'lattice_orient', arguments: { detail: 'brief' } });
     expect(result.isError).toBeFalsy();
     expect(JSON.parse(text(result))).toEqual({ status: 'ok', n: 1 });
-    expect(connection.calls).toEqual([{ method: 'lattice_orient', params: { detail: 'brief' } }]);
+    // One tools/list first to learn output schemas, then the forwarded call, unchanged.
+    expect(connection.calls).toEqual([
+      { method: 'tools/list', params: {} },
+      { method: 'lattice_orient', params: { detail: 'brief' } },
+    ]);
   });
 
   it('prefers a local handler over forwarding', async () => {
@@ -99,6 +103,64 @@ describe('Relay MCP server', () => {
     connection.responses.set('ping', 'pong');
     const { client } = await connect({ connection });
     expect(text(await client.callTool({ name: 'local_tool', arguments: { a: 1 } }))).toBe('local:{"a":1}:pong');
+  });
+
+  describe('structured results (MCP output schemas)', () => {
+    const outputSchema = { type: 'object', properties: { status: { type: 'string' } }, required: ['status'] };
+    const schemaTools = [
+      { name: 'ping', inputSchema: { type: 'object', properties: {} }, outputSchema },
+      { name: 'stats', inputSchema: { type: 'object', properties: {} }, outputSchema },
+      { name: 'free_text', inputSchema: { type: 'object', properties: {} } },
+    ];
+
+    function schemaConnection() {
+      const connection = new FakeConnection();
+      connection.responses.set('tools/list', { tools: schemaTools });
+      return connection;
+    }
+
+    it('returns structuredContent for a forwarded object result, which SDK clients require', async () => {
+      const connection = schemaConnection();
+      connection.responses.set('stats', { status: 'ok', count: 3 });
+      const { client } = await connect({ connection });
+      await client.listTools();
+      const result = await client.callTool({ name: 'stats', arguments: {} });
+      expect(result.isError).toBeFalsy();
+      expect(result.structuredContent).toEqual({ status: 'ok', count: 3 });
+      expect(JSON.parse(text(result))).toEqual({ status: 'ok', count: 3 });
+    });
+
+    it('parses a local handler JSON string into structuredContent', async () => {
+      const connection = schemaConnection();
+      connection.responses.set('ping', { status: 'pong' });
+      const { client } = await connect({
+        connection,
+        localHandlers: { ping: async caller => JSON.stringify(await caller.call('ping')) },
+      });
+      await client.listTools();
+      const result = await client.callTool({ name: 'ping', arguments: {} });
+      expect(result.structuredContent).toEqual({ status: 'pong' });
+    });
+
+    it('learns output schemas even when the client calls before listing', async () => {
+      const connection = schemaConnection();
+      connection.responses.set('stats', 'not json');
+      const { client } = await connect({ connection });
+      const result = await client.callTool({ name: 'stats', arguments: {} });
+      expect(result.isError).toBe(true);
+      expect(text(result)).toMatch(/declares an output schema but returned string/);
+    });
+
+    it('leaves plain-text results of schema-less tools alone', async () => {
+      const connection = schemaConnection();
+      connection.responses.set('free_text', 'hello');
+      const { client } = await connect({ connection });
+      await client.listTools();
+      const result = await client.callTool({ name: 'free_text', arguments: {} });
+      expect(result.isError).toBeFalsy();
+      expect(result.structuredContent).toBeUndefined();
+      expect(text(result)).toBe('hello');
+    });
   });
 
   it('reports plugin errors and an unreachable plugin as tool errors, not protocol failures', async () => {
