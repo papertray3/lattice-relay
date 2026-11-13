@@ -11,7 +11,7 @@
 // Refuses a dirty worktree or inconsistent versions unless --allow-dirty is given
 // (for local iteration only; the manifest then records dirty: true and is not a
 // release candidate). Publishes nothing.
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,8 +21,9 @@ import { smoke } from './smoke-server.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const allowDirty = process.argv.includes('--allow-dirty');
-const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { cwd: root, stdio: 'inherit', shell: process.platform === 'win32', ...opts });
-const out = (cmd, args) => execFileSync(cmd, args, { cwd: root, encoding: 'utf8', shell: process.platform === 'win32' }).trim();
+// Fixed npm scripts only; a command string lets npm's shim resolve on every OS.
+const npmRun = script => execSync(`npm run ${script}`, { cwd: root, stdio: 'inherit' });
+const git = args => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 
 function fail(message) {
 	console.error(`Release refused: ${message}`);
@@ -31,14 +32,14 @@ function fail(message) {
 
 const problems = checkRelease(root);
 if (problems.length) fail(`identity/version check failed:\n  - ${problems.join('\n  - ')}`);
-const dirty = out('git', ['status', '--porcelain']) !== '';
+const dirty = git(['status', '--porcelain']) !== '';
 if (dirty && !allowDirty) fail('the worktree has uncommitted changes (use --allow-dirty for a non-candidate local build)');
-const sourceCommit = out('git', ['rev-parse', 'HEAD']);
+const sourceCommit = git(['rev-parse', 'HEAD']);
 const version = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version;
 
 const BUILD_COMMANDS = ['npm ci', 'npm run server:install', 'npm run build', 'npm run server:bundle'];
-run('npm', ['run', 'build']);
-run('npm', ['run', 'server:bundle']);
+npmRun('build');
+npmRun('server:bundle');
 
 const releaseRoot = path.join(root, 'release', `${IDENTITY.pluginId}-${version}`);
 const pluginDir = path.join(releaseRoot, IDENTITY.pluginId);
