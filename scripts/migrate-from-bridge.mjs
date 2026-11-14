@@ -64,8 +64,10 @@ try {
 		console.log(`Backup and record: ${opts.backup}`);
 		if (live) {
 			console.log(`Installed Lattice Relay ${record.releaseVersion} beside the running Bridge (not yet enabled). Swap them in the running vault, in this order:`);
-			console.log(`  obsidian plugin:disable id=obsidian-mcp-bridge vault=<vault name>`);
-			console.log(`  obsidian plugin:enable id=lattice-relay vault=<vault name>`);
+			console.log('  (vault= must come FIRST; after the command it is ignored and the focused vault is used)');
+			console.log('  obsidian vault=<name> vault info=path            # confirm the target');
+			console.log('  obsidian vault=<name> plugin:disable id=obsidian-mcp-bridge');
+			console.log(`  obsidian vault=<name> eval code="await app.plugins.loadManifests(); return await app.plugins.enablePluginAndSave('lattice-relay')"`);
 			console.log('Then reload Lattice (or install the matching Lattice build) so it registers its tools with Relay.');
 		} else {
 			console.log(`Migrated to Lattice Relay ${record.releaseVersion}. Bridge is disabled but left installed for rollback.`);
@@ -76,7 +78,7 @@ try {
 		const live = needMode();
 		const result = rollbackMigration({ vault: opts.vault, backupDir: opts.backup, live });
 		console.log(`Rolled back: restored ${result.restored.join(', ') || 'nothing (Bridge files unchanged)'}.${result.parked ? ' Relay plugin directory parked in the backup.' : ''}`);
-		if (result.reenable) console.log('Re-enable Bridge in the running vault: obsidian plugin:enable id=obsidian-mcp-bridge vault=<vault name>');
+		if (result.reenable) console.log('Re-enable Bridge in the running vault: obsidian vault=<name> plugin:enable id=obsidian-mcp-bridge');
 		console.log('Restore the previous MCP client configuration before reconnecting clients.');
 	} else {
 		console.error('Usage: migrate-from-bridge.mjs preview|apply|rollback --vault <dir> [--release <dir>] [--backup <dir>] [--obsidian-closed | --live]');

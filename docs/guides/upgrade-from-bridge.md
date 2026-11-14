@@ -58,6 +58,37 @@ Run from a Relay checkout (or anywhere with the scripts), with the release direc
 
 8. **Retire Bridge later.** Once you're satisfied, delete `.obsidian/plugins/obsidian-mcp-bridge/`. Until then it is your fast rollback path.
 
+## Live procedure (the vault stays open)
+
+Use this when the vault can't be closed, for example because the agent doing the migration runs inside it. It needs the Obsidian CLI (Obsidian 1.12+, enabled in settings).
+
+> **Always put `vault=<name>` first.** `obsidian vault=<name> <command>` targets that vault. If `vault=` comes after the command, it is silently ignored and the command acts on whichever vault has focus. Confirm the target before every change:
+>
+> ```
+> obsidian vault=<name> vault info=path
+> ```
+
+1. **Preview**, as above.
+2. **Install beside the running Bridge.** Relay is installed and the backup verified, but `community-plugins.json` is left to Obsidian:
+
+   ```
+   node scripts/migrate-from-bridge.mjs apply --vault <vault> --release <release>/lattice-relay --backup <new-backup-dir> --live
+   ```
+
+3. **Swap the plugins in this order.** Disable Bridge first so it releases the port. Obsidian has to rescan its plugin manifests before it can enable the new directory; plain `plugin:enable` reports "not found".
+
+   ```
+   obsidian vault=<name> plugin:disable id=obsidian-mcp-bridge
+   obsidian vault=<name> eval code="await app.plugins.loadManifests(); return await app.plugins.enablePluginAndSave('lattice-relay')"
+   ```
+
+4. **Then update Lattice.** Lattice registers `lattice_blueprint_draft` only when it loads, so it must load after Relay is enabled. With Hot Reload, copy the matching Lattice build's `manifest.json`, then `styles.css`, then `main.js` last. Otherwise use `obsidian vault=<name> plugin:reload id=lattice`. Until Lattice reloads, the draft tool is absent.
+5. **Verify and reconnect clients** (steps 6–7 above).
+
+Client server processes that are already running keep working through Relay, because the port, key, and request protocol are unchanged. Replace their configurations anyway; the old variables and server path stop working once Bridge is retired.
+
+**Live rollback:** disable Relay with `obsidian vault=<name> plugin:disable id=lattice-relay`, run `rollback ... --live`, then `obsidian vault=<name> plugin:enable id=obsidian-mcp-bridge`, and restore the previous Lattice build the same way.
+
 ## Rollback
 
 1. Close the vault in Obsidian.
