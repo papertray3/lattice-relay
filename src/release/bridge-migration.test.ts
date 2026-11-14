@@ -139,6 +139,40 @@ describe('vault migration and rollback', () => {
 		expect(record.installedFiles).toEqual(['defaults/tools.defaults.yaml', 'main.js', 'manifest.json', 'server/lattice-relay.mjs']);
 	});
 
+	it('live mode installs beside the running Bridge and leaves the enabled list to Obsidian', () => {
+		const before = snapshot(vault);
+		const backupDir = path.join(tmp, 'backup');
+		const record = applyMigration({ vault, release, backupDir, live: true });
+		expect(record.mode).toBe('live');
+		const after = snapshot(vault);
+		expect(after['.obsidian/community-plugins.json']).toBe(before['.obsidian/community-plugins.json']);
+		expect(Object.keys(after).filter(f => before[f] !== after[f]).every(f => f.startsWith('.obsidian/plugins/lattice-relay/'))).toBe(true);
+		expect(fs.existsSync(path.join(vault, '.obsidian', 'plugins', 'lattice-relay', 'data.json'))).toBe(true);
+	});
+
+	it('live rollback refuses while Relay is enabled, then restores without touching the enabled list', () => {
+		const backupDir = path.join(tmp, 'backup');
+		applyMigration({ vault, release, backupDir, live: true });
+		// Obsidian (via the CLI) swapped the plugins:
+		write(path.join(vault, '.obsidian', 'community-plugins.json'), ['lattice', 'hot-reload', 'lattice-relay']);
+		expect(() => rollbackMigration({ vault, backupDir, live: true })).toThrow(/still enabled/);
+		// Operator disables Relay with the CLI first:
+		write(path.join(vault, '.obsidian', 'community-plugins.json'), ['lattice', 'hot-reload']);
+		const listBefore = fs.readFileSync(path.join(vault, '.obsidian', 'community-plugins.json'), 'utf8');
+		const result = rollbackMigration({ vault, backupDir, live: true });
+		expect(result).toEqual({ restored: [], parked: true, reenable: true });
+		expect(fs.readFileSync(path.join(vault, '.obsidian', 'community-plugins.json'), 'utf8')).toBe(listBefore);
+		expect(fs.existsSync(path.join(vault, '.obsidian', 'plugins', 'lattice-relay'))).toBe(false);
+	});
+
+	it('restores a changed Bridge directory but leaves an unchanged one in place', () => {
+		const backupDir = path.join(tmp, 'backup');
+		applyMigration({ vault, release, backupDir });
+		write(path.join(vault, '.obsidian', 'plugins', 'obsidian-mcp-bridge', 'main.js'), '// tampered');
+		expect(rollbackMigration({ vault, backupDir }).restored).toEqual(['plugins/obsidian-mcp-bridge', 'community-plugins.json']);
+		expect(fs.readFileSync(path.join(vault, '.obsidian', 'plugins', 'obsidian-mcp-bridge', 'main.js'), 'utf8')).toBe('// bridge');
+	});
+
 	it('refuses to run twice, to overwrite an existing Relay install, or to reuse a backup directory', () => {
 		const backupDir = path.join(tmp, 'backup');
 		applyMigration({ vault, release, backupDir });

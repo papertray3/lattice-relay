@@ -157,7 +157,7 @@ export function inspectMigration({ vault, release }) {
  * Apply the migration. Obsidian must be closed so it neither holds the port nor
  * rewrites community-plugins.json underneath us.
  */
-export function applyMigration({ vault, release, backupDir, now = new Date() }) {
+export function applyMigration({ vault, release, backupDir, now = new Date(), live = false }) {
 	const inspection = inspectMigration({ vault, release });
 	const { paths: p } = inspection;
 	if (fs.existsSync(backupDir)) throw new Error(`Backup directory already exists: ${backupDir}`);
@@ -175,14 +175,19 @@ export function applyMigration({ vault, release, backupDir, now = new Date() }) 
 	fs.writeFileSync(path.join(p.newDir, 'data.json'), JSON.stringify(inspection.settings, null, 2));
 
 	// 3. Swap the enabled entry in one write: Bridge off, Relay on, same position.
-	const enabled = inspection.enabled.map(id => (id === OLD_ID ? NEW_ID : id));
-	if (!inspection.oldEnabled) enabled.push(NEW_ID);
-	fs.writeFileSync(p.communityPlugins, JSON.stringify(enabled, null, 2));
+	//    In live mode Obsidian is running and owns that file; the operator swaps
+	//    the plugins with the Obsidian CLI instead (disable Bridge, then enable Relay).
+	if (!live) {
+		const enabled = inspection.enabled.map(id => (id === OLD_ID ? NEW_ID : id));
+		if (!inspection.oldEnabled) enabled.push(NEW_ID);
+		fs.writeFileSync(p.communityPlugins, JSON.stringify(enabled, null, 2));
+	}
 
 	const record = {
 		kind: 'lattice-relay.bridge-migration',
 		version: 1,
 		at: now.toISOString(),
+		mode: live ? 'live' : 'offline',
 		releaseVersion: inspection.releaseVersion,
 		installedFiles: listFiles(p.newDir).filter(f => f !== 'data.json'),
 		oldPluginWasEnabled: inspection.oldEnabled,
@@ -197,7 +202,7 @@ export function applyMigration({ vault, release, backupDir, now = new Date() }) 
  * Undo `applyMigration` from its backup. The Relay plugin directory is moved
  * into the backup (not deleted) so nothing written under Relay is lost.
  */
-export function rollbackMigration({ vault, backupDir }) {
+export function rollbackMigration({ vault, backupDir, live = false }) {
 	const p = paths(vault);
 	const recordFile = path.join(backupDir, 'migration-record.json');
 	if (!fs.existsSync(recordFile)) throw new Error(`No migration record in ${backupDir}`);
@@ -206,6 +211,15 @@ export function rollbackMigration({ vault, backupDir }) {
 
 	const backupOld = path.join(backupDir, 'plugins', OLD_ID);
 	if (!fs.existsSync(path.join(backupOld, 'data.json'))) throw new Error('Backup has no Bridge settings');
+	if (live) {
+		const enabled = fs.existsSync(p.communityPlugins) ? readJson(p.communityPlugins) : [];
+		if (enabled.includes(NEW_ID)) throw new Error(`${NEW_ID} is still enabled; disable it with the Obsidian CLI first`);
+	}
+
+	// Restore the Bridge directory only if it changed: in live mode its server may be in use.
+	const sameAsBackup = fs.existsSync(p.oldDir)
+		&& JSON.stringify(listFiles(p.oldDir)) === JSON.stringify(listFiles(backupOld))
+		&& listFiles(backupOld).every(f => sha256(path.join(p.oldDir, f)) === sha256(path.join(backupOld, f)));
 
 	if (fs.existsSync(p.newDir)) {
 		const parked = path.join(backupDir, 'rolled-back', NEW_ID);
@@ -214,14 +228,21 @@ export function rollbackMigration({ vault, backupDir }) {
 		fs.cpSync(p.newDir, parked, { recursive: true });
 		fs.rmSync(p.newDir, { recursive: true, force: true });
 	}
-	fs.rmSync(p.oldDir, { recursive: true, force: true });
-	fs.cpSync(backupOld, p.oldDir, { recursive: true });
-	// Reverse only Relay's entry so plugin toggles made since the migration survive.
-	const current = fs.existsSync(p.communityPlugins) ? readJson(p.communityPlugins) : [];
-	const enabled = record.oldPluginWasEnabled
-		? current.map(id => (id === NEW_ID ? OLD_ID : id))
-		: current.filter(id => id !== NEW_ID);
-	if (record.oldPluginWasEnabled && !enabled.includes(OLD_ID)) enabled.push(OLD_ID);
-	fs.writeFileSync(p.communityPlugins, JSON.stringify([...new Set(enabled)], null, 2));
-	return { restored: [`plugins/${OLD_ID}`, 'community-plugins.json'], parked: fs.existsSync(path.join(backupDir, 'rolled-back', NEW_ID)) };
+	const restored = [];
+	if (!sameAsBackup) {
+		fs.rmSync(p.oldDir, { recursive: true, force: true });
+		fs.cpSync(backupOld, p.oldDir, { recursive: true });
+		restored.push(`plugins/${OLD_ID}`);
+	}
+	if (!live) {
+		// Reverse only Relay's entry so plugin toggles made since the migration survive.
+		const current = fs.existsSync(p.communityPlugins) ? readJson(p.communityPlugins) : [];
+		const enabled = record.oldPluginWasEnabled
+			? current.map(id => (id === NEW_ID ? OLD_ID : id))
+			: current.filter(id => id !== NEW_ID);
+		if (record.oldPluginWasEnabled && !enabled.includes(OLD_ID)) enabled.push(OLD_ID);
+		fs.writeFileSync(p.communityPlugins, JSON.stringify([...new Set(enabled)], null, 2));
+		restored.push('community-plugins.json');
+	}
+	return { restored, parked: fs.existsSync(path.join(backupDir, 'rolled-back', NEW_ID)), reenable: live && record.oldPluginWasEnabled };
 }
